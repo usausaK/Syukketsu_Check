@@ -98,12 +98,6 @@
     .mark-circle { color: #2e7d32; font-weight: bold; font-size: 1.2em; }
     .mark-triangle { color: #f57f17; font-weight: bold; font-size: 1.2em; }
     .mark-cross { color: #c62828; font-weight: bold; font-size: 1.2em; }
-    
-    .comment-icon {
-      cursor: help;
-      margin-left: 5px;
-      font-size: 0.9em;
-    }
 
     .share-box {
       background: #e3f2fd;
@@ -146,7 +140,7 @@
 
     /* === 順位バッジ・ハイライト用スタイル === */
     .rank-1 td { background-color: #fffde7 !important; } /* 薄い黄色 */
-    .rank-2 td { background-color: #fafafa !important; } /* 少しグレー */
+    .rank-2 td { background-color: #fafafa !important; }
     .rank-3 td { background-color: #fafafa !important; }
     
     .badge {
@@ -217,12 +211,23 @@
       <p style="font-size: 0.9em; color: #555; margin-top: 5px;">参加者にこのURLを共有してください。</p>
     </div>
 
+    <!-- 最上部に追加：回答の修正セクション -->
+    <div id="edit-container" class="hidden" style="background: #fff3e0; padding: 15px; border-radius: 4px; margin-bottom: 25px; border: 1px solid #ffe082;">
+      <label style="color: #e65100; font-weight: bold; display: block; margin-bottom: 5px;">自分の回答を修正する</label>
+      <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <select id="edit-user-select" style="width: auto; min-width: 180px; padding: 8px;">
+          <option value="">-- 名前を選択 --</option>
+        </select>
+        <button id="btn-start-edit" style="background-color: #ef6c00; padding: 8px 15px; font-size: 14px;">修正ボタン</button>
+      </div>
+    </div>
+
     <h2>出欠表</h2>
     <div class="table-wrapper">
       <table id="attendance-table"></table>
     </div>
 
-    <h2>出欠を入力する</h2>
+    <h2 id="form-title">出欠を入力する</h2>
     <div class="form-group">
       <label for="user-name">お名前</label>
       <input type="text" id="user-name" placeholder="例：山田 太郎">
@@ -237,12 +242,12 @@
     </div>
 
     <button id="btn-submit-response">回答を送信</button>
+    <button id="btn-cancel-edit" class="hidden" style="background:#666; margin-left:10px;">修正をキャンセル</button>
   </div>
 
 </div>
 
 <script type="module">
-  // onSnapshot（リアルタイム監視）を追加インポート
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getFirestore, doc, setDoc, updateDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
@@ -278,7 +283,6 @@
       const newEventRef = doc(collection(db, this.COLLECTION_NAME));
       const eventId = newEventRef.id;
       eventData.id = eventId;
-      // 改良: responses を配列ではなくオブジェクト（マップ）として初期化
       eventData.responses = {}; 
       await setDoc(newEventRef, eventData);
       return eventId;
@@ -286,25 +290,19 @@
 
     async submitResponse(eventId, responseData) {
       const docRef = doc(db, this.COLLECTION_NAME, eventId);
-      
-      // 改良: データを一度取得して上書きするのではなく、
-      // データベース上で特定の人（名前）のデータだけをピンポイントで更新（統合）する
-      // これにより、他の人が同時に回答していても消えなくなります。
       const updatePayload = {};
       updatePayload[`responses.${responseData.name}`] = responseData;
-      
       await updateDoc(docRef, updatePayload);
       return true;
     },
 
-    // 改良: リアルタイムでデータの変更を監視する関数
     listenEvent(eventId, callback, errorCallback) {
       const docRef = doc(db, this.COLLECTION_NAME, eventId);
       return onSnapshot(docRef, (docSnap) => {
         if (docSnap.exists()) {
           callback(docSnap.data());
         } else {
-          callback(null); // 削除された場合など
+          callback(null);
         }
       }, errorCallback);
     }
@@ -390,18 +388,15 @@
   }
 
   async function loadEventScreen(eventId) {
-    // リアルタイムリスナーを開始
     Api.listenEvent(eventId, (eventData) => {
       if (!eventData) {
-        alert("イベントが見つかりません。削除された可能性があります。");
+        alert("イベントが見つかりません。");
         window.location.href = window.location.pathname;
         return;
       }
       
-      // データが更新されるたびに画面を再描画
       currentEventData = eventData;
       
-      // 最初の読み込み時のみ画面切り替えとフォーム描画を行う
       if (document.getElementById('view-event').classList.contains('hidden')) {
         showView('view-event');
         document.getElementById('display-event-name').textContent = eventData.name;
@@ -414,14 +409,87 @@
         renderAttendanceForm();
       }
 
-      // 出欠表は常に最新データで再描画
+      // 修正メニュー（セレクトボックス）の更新
+      const selectEl = document.getElementById('edit-user-select');
+      const prevSelected = selectEl.value;
+      selectEl.innerHTML = '<option value="">-- 名前を選択 --</option>';
+      
+      const responsesList = eventData.responses ? Object.values(eventData.responses) : [];
+      if (responsesList.length > 0) {
+        document.getElementById('edit-container').classList.remove('hidden');
+        responsesList.forEach(res => {
+          const opt = document.createElement('option');
+          opt.value = res.name;
+          opt.textContent = res.name;
+          selectEl.appendChild(opt);
+        });
+        if (prevSelected && eventData.responses[prevSelected]) {
+          selectEl.value = prevSelected;
+        }
+      } else {
+        document.getElementById('edit-container').classList.add('hidden');
+      }
+
       renderAttendanceTable();
 
     }, (error) => {
-      showError("データの読み込みに失敗しました。Firestoreの設定等を確認してください。", error);
+      showError("データの読み込みに失敗しました。", error);
     });
 
-    // 回答送信ボタンのイベントリスナー（1度だけ登録）
+    // 修正開始ボタンの処理
+    document.getElementById('btn-start-edit').onclick = () => {
+      const selectedName = document.getElementById('edit-user-select').value;
+      if (!selectedName) {
+        alert("修正したいお名前を選択してください。");
+        return;
+      }
+      
+      const resData = currentEventData.responses[selectedName];
+      if (!resData) return;
+      
+      // フォームへ過去データを復元
+      document.getElementById('user-name').value = resData.name;
+      document.getElementById('user-name').disabled = true; // 修正中は名前変更不可
+      document.getElementById('user-name').style.backgroundColor = '#e0e0e0';
+      document.getElementById('user-comment').value = resData.comment || '';
+      
+      currentEventData.dates.forEach((d, i) => {
+        const userMark = resData.attendances[d.date] || '△';
+        const radio = document.querySelector(`input[name="attend-${i}"][value="${userMark}"]`);
+        if (radio) radio.checked = true;
+      });
+      
+      document.getElementById('form-title').textContent = `出欠を修正する（${selectedName}さん）`;
+      document.getElementById('btn-submit-response').textContent = "修正を保存する";
+      document.getElementById('btn-cancel-edit').classList.remove('hidden');
+      
+      document.getElementById('form-title').scrollIntoView({ behavior: 'smooth' });
+    };
+
+    // 修正キャンセルボタンの処理
+    document.getElementById('btn-cancel-edit').onclick = () => {
+      resetForm();
+    };
+
+    // フォームリセット関数
+    function resetForm() {
+      document.getElementById('user-name').value = '';
+      document.getElementById('user-name').disabled = false;
+      document.getElementById('user-name').style.backgroundColor = '';
+      document.getElementById('user-comment').value = '';
+      document.getElementById('form-title').textContent = "出欠を入力する";
+      document.getElementById('btn-submit-response').textContent = "回答を送信";
+      document.getElementById('btn-cancel-edit').classList.add('hidden');
+      
+      if (currentEventData && currentEventData.dates) {
+        currentEventData.dates.forEach((d, i) => {
+          const radio = document.querySelector(`input[name="attend-${i}"][value="△"]`);
+          if (radio) radio.checked = true;
+        });
+      }
+    }
+
+    // 回答送信・修正保存
     document.getElementById('btn-submit-response').onclick = async () => {
       const name = document.getElementById('user-name').value.trim();
       if (!name) {
@@ -440,19 +508,15 @@
       const responseData = { name, comment, attendances };
       const btn = document.getElementById('btn-submit-response');
       btn.disabled = true;
-      btn.textContent = "送信中...";
 
       try {
         await Api.submitResponse(eventId, responseData);
-        // リロードは不要になりました（onSnapshotで自動更新されるため）
-        alert("回答を送信しました！\n下部または右側の出欠表に反映されます。");
-        // 名前欄は残し、コメント欄だけクリアする
-        document.getElementById('user-comment').value = '';
+        alert("回答を保存しました！");
+        resetForm();
       } catch (error) {
         showError("回答の送信に失敗しました。", error);
       } finally {
         btn.disabled = false;
-        btn.textContent = "回答を送信";
       }
     };
   }
@@ -462,7 +526,6 @@
     const event = currentEventData;
     let html = '';
 
-    // responses はオブジェクトなので配列に変換する
     const responsesList = event.responses ? Object.values(event.responses) : [];
     const hasResponses = responsesList.length > 0;
 
@@ -479,7 +542,7 @@
       return { countO, countT, countX, index };
     });
 
-    // 順位付け (●が1つ以上ある日程のみ)
+    // 1位、2位、3位の順位付け計算 (●が1つ以上ある日程が対象)
     const sortedStats = [...stats].filter(s => s.countO > 0).sort((a, b) => b.countO - a.countO);
     let currentRank = 1;
     let currentScore = -1;
@@ -491,19 +554,19 @@
         currentRank = actualRank;
         currentScore = s.countO;
       }
-      // 3位までランク付け (同率も考慮)
       if (currentRank <= 3) {
         rankMap[s.index] = currentRank;
       }
       actualRank++;
     });
 
+    // テーブルヘッダーの生成
     html += '<tr><th>日程</th><th>集計</th>';
     if (hasResponses) {
       responsesList.forEach(res => {
-        // コメントを常に表示するよう変更
+        // コメントを常時表示する吹き出し風デザインに変更
         const commentHtml = res.comment 
-          ? `<div style="font-size: 0.8em; color: #666; font-weight: normal; margin-top: 4px; white-space: normal; min-width: 80px; text-align: left; padding: 4px; background: #fff; border-radius: 4px; border: 1px solid #ccc;">${res.comment}</div>` 
+          ? `<div style="font-size: 0.8em; color: #555; font-weight: normal; margin-top: 6px; white-space: normal; min-width: 90px; text-align: left; padding: 5px; background: #fff; border-radius: 4px; border: 1px solid #ccc; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">${res.comment}</div>` 
           : '';
         html += `<th style="vertical-align: top;">${res.name}${commentHtml}</th>`;
       });
@@ -512,6 +575,7 @@
     }
     html += '</tr>';
 
+    // 各日程行の生成
     event.dates.forEach((d, index) => {
       const st = stats[index];
       const rank = rankMap[index];
@@ -533,9 +597,7 @@
       }
 
       html += `<tr class="${rowClass}">`;
-      
       html += `<td>${badgeHtml}${d.date}<br><small>${d.time}</small></td>`;
-      
       html += `<td class="stats-cell">
         <span class="mark-circle">●</span>${st.countO} 
         <span class="mark-triangle">△</span>${st.countT} 
@@ -591,7 +653,6 @@
 
       if (id) {
         currentEventId = id;
-        // リスナーが初期化・画面遷移を担当
         loadEventScreen(id);
       } else {
         showCreateScreen();
@@ -602,7 +663,6 @@
   }
 
   initApp();
-
 </script>
 
 </body>
