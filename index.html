@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>日程調整アプリ (Firebase版)</title>
   
+  <!-- カレンダーUIライブラリ Flatpickr -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ja.js"></script>
@@ -130,16 +131,31 @@
       font-size: 1.2em;
       color: #666;
     }
+    
+    /* エラー表示用 */
+    .error-msg {
+      color: #c62828;
+      background: #ffebee;
+      padding: 15px;
+      border-radius: 4px;
+      margin-top: 20px;
+      text-align: left;
+      font-size: 0.9em;
+      word-break: break-all;
+    }
   </style>
 </head>
 <body>
 
 <div class="container">
   
+  <!-- ローディング表示 -->
   <div id="view-loading" class="loading">
-    読み込み中...
+    読み込み中...<br>
+    <div id="error-container" class="error-msg hidden"></div>
   </div>
   
+  <!-- ================= 管理者・作成画面 ================= -->
   <div id="view-create" class="hidden">
     <h1>イベント日程調整</h1>
     <p>イベントの候補日を選んで、出欠表を作成しましょう。</p>
@@ -169,6 +185,7 @@
   </div>
 
 
+  <!-- ================= 回答・出欠表画面 ================= -->
   <div id="view-event" class="hidden">
     <h1 id="display-event-name"></h1>
     
@@ -204,11 +221,9 @@
 </div>
 
 <script type="module">
-  // Firebase SDK のインポート (ブラウザ用CDN形式)
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getFirestore, doc, getDoc, setDoc, updateDoc, collection } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-  // 提供されたFirebase Config情報を組み込み
   const firebaseConfig = {
     apiKey: "AIzaSyAZNUBnvO0t4ExD99dHUQYkJUx1rIKO3hk",
     authDomain: "scheduleadjustment-41555.firebaseapp.com",
@@ -218,31 +233,35 @@
     appId: "1:989847585888:web:6c1d3cc5923facc4dcef05"
   };
 
-  // Firebaseの初期化
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+  let app, db;
+  
+  // エラーを画面に表示する関数
+  function showError(message, errorObj) {
+    const errorContainer = document.getElementById('error-container');
+    errorContainer.classList.remove('hidden');
+    errorContainer.innerHTML = `<strong>エラーが発生しました:</strong><br>${message}<br><br><small>${errorObj ? errorObj.toString() : ''}</small>`;
+    console.error(errorObj);
+  }
 
-  /**
-   * =========================================================
-   * 1. Firestore連携部分
-   * =========================================================
-   */
+  try {
+    app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+  } catch (error) {
+    showError("Firebaseの初期化に失敗しました。設定値を確認してください。", error);
+  }
+
   const Api = {
     COLLECTION_NAME: 'events',
 
-    // イベントを作成してIDを返す (Firestoreの自動生成IDを使用)
     async createEvent(eventData) {
       const newEventRef = doc(collection(db, this.COLLECTION_NAME));
       const eventId = newEventRef.id;
-      
       eventData.id = eventId;
-      eventData.responses = []; // 回答リストを初期化
-      
+      eventData.responses = [];
       await setDoc(newEventRef, eventData);
       return eventId;
     },
 
-    // イベントIDからデータを取得
     async getEvent(eventId) {
       const docRef = doc(db, this.COLLECTION_NAME, eventId);
       const docSnap = await getDoc(docRef);
@@ -252,15 +271,12 @@
       return null;
     },
 
-    // 回答を保存・更新
     async submitResponse(eventId, responseData) {
       const docRef = doc(db, this.COLLECTION_NAME, eventId);
       const docSnap = await getDoc(docRef);
       if (!docSnap.exists()) throw new Error("Event not found");
 
       const event = docSnap.data();
-      
-      // 同一名前の回答があれば上書き
       const index = event.responses.findIndex(r => r.name === responseData.name);
       if (index >= 0) {
         event.responses[index] = responseData;
@@ -268,27 +284,163 @@
         event.responses.push(responseData);
       }
       
-      // ドキュメントを更新
       await updateDoc(docRef, { responses: event.responses });
       return true;
     }
   };
 
-  /**
-   * =========================================================
-   * 2. アプリケーションのUI・ロジック
-   * =========================================================
-   */
   let currentEventId = null;
   let currentEventData = null;
   let selectedDates = [];
 
-  // 初期化処理
-  const params = new URLSearchParams(window.location.search);
-  const id = params.get('id');
+  function showView(viewId) {
+    document.getElementById('view-loading').classList.add('hidden');
+    document.getElementById('view-create').classList.add('hidden');
+    document.getElementById('view-event').classList.add('hidden');
+    document.getElementById(viewId).classList.remove('hidden');
+  }
 
-  if (id) {
-    currentEventId = id;
-    await loadEventScreen(id);
-  } else {
-    showCreate
+  function showCreateScreen() {
+    showView('view-create');
+
+    flatpickr("#calendar", {
+      locale: "ja",
+      mode: "multiple",
+      dateFormat: "Y-m-d",
+      onChange: function(selectedDatesObj, dateStr, instance) {
+        selectedDates = selectedDatesObj.map(d => instance.formatDate(d, "Y-m-d (D)"));
+        renderSelectedDates();
+      }
+    });
+
+    document.getElementById('default-time').addEventListener('input', renderSelectedDates);
+
+    document.getElementById('btn-create-event').addEventListener('click', async () => {
+      const eventName = document.getElementById('event-name').value.trim();
+      if (!eventName) {
+        alert("イベント名を入力してください。");
+        return;
+      }
+      if (selectedDates.length === 0) {
+        alert("候補日を1つ以上選択してください。");
+        return;
+      }
+
+      const datesData = selectedDates.map((date, index) => {
+        const timeInput = document.getElementById(`time-${index}`).value;
+        return { date: date, time: timeInput };
+      });
+
+      const newEvent = { name: eventName, dates: datesData };
+
+      try {
+        const newId = await Api.createEvent(newEvent);
+        window.location.href = `${window.location.origin}${window.location.pathname}?id=${newId}`;
+      } catch (error) {
+        showError("イベントの作成に失敗しました。Firestoreの権限（セキュリティルール）などを確認してください。", error);
+      }
+    });
+  }
+
+  function renderSelectedDates() {
+    const container = document.getElementById('selected-dates');
+    const defaultTime = document.getElementById('default-time').value.trim();
+    
+    const currentTimes = [];
+    selectedDates.forEach((_, index) => {
+      const el = document.getElementById(`time-${index}`);
+      if (el) currentTimes[index] = el.value;
+    });
+
+    container.innerHTML = '';
+    selectedDates.forEach((date, index) => {
+      const div = document.createElement('div');
+      div.className = 'date-item';
+      const timeValue = currentTimes[index] !== undefined ? currentTimes[index] : defaultTime;
+      div.innerHTML = `
+        <span>${date}</span>
+        <input type="text" id="time-${index}" value="${timeValue}" placeholder="時間 (例: 19:00〜)">
+      `;
+      container.appendChild(div);
+    });
+  }
+
+  async function loadEventScreen(eventId) {
+    try {
+      const event = await Api.getEvent(eventId);
+      if (!event) {
+        alert("イベントが見つかりません。");
+        window.location.href = window.location.pathname;
+        return;
+      }
+      currentEventData = event;
+      showView('view-event');
+
+      document.getElementById('display-event-name').textContent = event.name;
+      
+      const shareUrl = `${window.location.origin}${window.location.pathname}?id=${eventId}`;
+      const shareLinkEl = document.getElementById('share-link');
+      shareLinkEl.href = shareUrl;
+      shareLinkEl.textContent = shareUrl;
+
+      renderAttendanceTable();
+      renderAttendanceForm();
+
+      document.getElementById('btn-go-home').addEventListener('click', () => {
+        window.location.href = window.location.pathname;
+      });
+
+      document.getElementById('btn-submit-response').onclick = async () => {
+        const name = document.getElementById('user-name').value.trim();
+        if (!name) {
+          alert("お名前を入力してください。");
+          return;
+        }
+
+        const comment = document.getElementById('user-comment').value.trim();
+        const attendances = {};
+
+        event.dates.forEach((d, i) => {
+          const selected = document.querySelector(`input[name="attend-${i}"]:checked`);
+          attendances[d.date] = selected ? selected.value : '△';
+        });
+
+        const responseData = { name, comment, attendances };
+
+        try {
+          await Api.submitResponse(eventId, responseData);
+          alert("回答を送信しました！");
+          window.location.reload();
+        } catch (error) {
+          showError("回答の送信に失敗しました。", error);
+        }
+      };
+    } catch (error) {
+      showError("データの読み込みに失敗しました。Firestoreの設定等を確認してください。", error);
+    }
+  }
+
+  // アプリの初期化処理を関数でラップして実行
+  async function initApp() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get('id');
+
+      if (id) {
+        currentEventId = id;
+        await loadEventScreen(id);
+      } else {
+        showCreateScreen();
+      }
+    } catch (error) {
+      showError("画面の初期化に失敗しました。", error);
+    }
+  }
+
+  // 実行開始
+  initApp();
+
+</script>
+
+</body>
+</html>
