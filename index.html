@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>日程調整アプリ</title>
+  <title>日程調整アプリ (Firebase版)</title>
   
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -86,7 +86,6 @@
     }
     th { background-color: #f1f1f1; }
     
-    /* 日付・時間列はスクロール時に固定 */
     th:first-child, td:first-child {
       position: sticky;
       left: 0;
@@ -113,7 +112,6 @@
       word-break: break-all;
     }
 
-    /* 回答フォーム */
     .attendance-row {
       display: flex;
       justify-content: space-between;
@@ -125,11 +123,22 @@
     .attendance-options label { margin-right: 15px; font-weight: normal; cursor: pointer; }
 
     .hidden { display: none !important; }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      font-size: 1.2em;
+      color: #666;
+    }
   </style>
 </head>
 <body>
 
 <div class="container">
+  
+  <div id="view-loading" class="loading">
+    読み込み中...
+  </div>
   
   <div id="view-create" class="hidden">
     <h1>イベント日程調整</h1>
@@ -153,8 +162,7 @@
     
     <div class="form-group">
       <label>選択された候補日</label>
-      <div id="selected-dates" class="date-list">
-        </div>
+      <div id="selected-dates" class="date-list"></div>
     </div>
     
     <button id="btn-create-event">出欠表を作成</button>
@@ -172,8 +180,7 @@
 
     <h2>出欠表</h2>
     <div class="table-wrapper">
-      <table id="attendance-table">
-        </table>
+      <table id="attendance-table"></table>
     </div>
 
     <h2>出欠を入力する</h2>
@@ -183,8 +190,7 @@
       <small style="color: #666;">※同じ名前で入力すると回答が上書きされます。</small>
     </div>
 
-    <div class="form-group" id="attendance-form-list">
-      </div>
+    <div class="form-group" id="attendance-form-list"></div>
 
     <div class="form-group">
       <label for="user-comment">コメント（任意）</label>
@@ -197,293 +203,92 @@
 
 </div>
 
-<script>
-/**
- * =========================================================
- * 1. データ連携部分（外部サービス連携時はここを書き換えます）
- * =========================================================
- */
-const Api = {
-  DB_KEY: 'chousei_events_data',
+<script type="module">
+  // Firebase SDK のインポート (ブラウザ用CDN形式)
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getFirestore, doc, getDoc, setDoc, updateDoc, collection } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-  // 全データを取得
-  _getAllData() {
-    return JSON.parse(localStorage.getItem(this.DB_KEY) || '{}');
-  },
+  // 提供されたFirebase Config情報を組み込み
+  const firebaseConfig = {
+    apiKey: "AIzaSyAZNUBnvO0t4ExD99dHUQYkJUx1rIKO3hk",
+    authDomain: "scheduleadjustment-41555.firebaseapp.com",
+    projectId: "scheduleadjustment-41555",
+    storageBucket: "scheduleadjustment-41555.firebasestorage.app",
+    messagingSenderId: "989847585888",
+    appId: "1:989847585888:web:6c1d3cc5923facc4dcef05"
+  };
 
-  // イベントを作成してIDを返す
-  async createEvent(eventData) {
-    const data = this._getAllData();
-    // ランダムなIDを生成
-    const eventId = 'evt_' + Math.random().toString(36).substr(2, 9);
-    eventData.id = eventId;
-    eventData.responses = []; // 回答リストを初期化
-    data[eventId] = eventData;
-    localStorage.setItem(this.DB_KEY, JSON.stringify(data));
-    return eventId;
-  },
+  // Firebaseの初期化
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
 
-  // イベントIDからデータを取得
-  async getEvent(eventId) {
-    const data = this._getAllData();
-    return data[eventId] || null;
-  },
+  /**
+   * =========================================================
+   * 1. Firestore連携部分
+   * =========================================================
+   */
+  const Api = {
+    COLLECTION_NAME: 'events',
 
-  // 回答を保存・更新
-  async submitResponse(eventId, responseData) {
-    const data = this._getAllData();
-    const event = data[eventId];
-    if (!event) throw new Error("Event not found");
+    // イベントを作成してIDを返す (Firestoreの自動生成IDを使用)
+    async createEvent(eventData) {
+      const newEventRef = doc(collection(db, this.COLLECTION_NAME));
+      const eventId = newEventRef.id;
+      
+      eventData.id = eventId;
+      eventData.responses = []; // 回答リストを初期化
+      
+      await setDoc(newEventRef, eventData);
+      return eventId;
+    },
 
-    // 同一名前の回答があれば上書き（インデックスを探す）
-    const index = event.responses.findIndex(r => r.name === responseData.name);
-    if (index >= 0) {
-      event.responses[index] = responseData;
-    } else {
-      event.responses.push(responseData);
+    // イベントIDからデータを取得
+    async getEvent(eventId) {
+      const docRef = doc(db, this.COLLECTION_NAME, eventId);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        return docSnap.data();
+      }
+      return null;
+    },
+
+    // 回答を保存・更新
+    async submitResponse(eventId, responseData) {
+      const docRef = doc(db, this.COLLECTION_NAME, eventId);
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) throw new Error("Event not found");
+
+      const event = docSnap.data();
+      
+      // 同一名前の回答があれば上書き
+      const index = event.responses.findIndex(r => r.name === responseData.name);
+      if (index >= 0) {
+        event.responses[index] = responseData;
+      } else {
+        event.responses.push(responseData);
+      }
+      
+      // ドキュメントを更新
+      await updateDoc(docRef, { responses: event.responses });
+      return true;
     }
-    
-    localStorage.setItem(this.DB_KEY, JSON.stringify(data));
-    return true;
-  }
-};
+  };
 
+  /**
+   * =========================================================
+   * 2. アプリケーションのUI・ロジック
+   * =========================================================
+   */
+  let currentEventId = null;
+  let currentEventData = null;
+  let selectedDates = [];
 
-/**
- * =========================================================
- * 2. アプリケーションのUI・ロジック
- * =========================================================
- */
-
-// 状態管理
-let currentEventId = null;
-let currentEventData = null;
-let selectedDates = []; // カレンダーで選ばれた日付の配列
-
-// ページロード時の初期化処理
-window.addEventListener('DOMContentLoaded', async () => {
-  // URLパラメータからイベントIDを取得
+  // 初期化処理
   const params = new URLSearchParams(window.location.search);
   const id = params.get('id');
 
   if (id) {
-    // イベントIDがある場合は回答画面を表示
     currentEventId = id;
     await loadEventScreen(id);
   } else {
-    // ない場合は作成画面を表示
-    showCreateScreen();
-  }
-});
-
-// 画面切り替えユーティリティ
-function showView(viewId) {
-  document.getElementById('view-create').classList.add('hidden');
-  document.getElementById('view-event').classList.add('hidden');
-  document.getElementById(viewId).classList.remove('hidden');
-}
-
-
-/* --- 作成画面のロジック --- */
-
-function showCreateScreen() {
-  showView('view-create');
-
-  // Flatpickrの初期化（複数日選択モード）
-  flatpickr("#calendar", {
-    locale: "ja",
-    mode: "multiple",
-    dateFormat: "Y-m-d",
-    onChange: function(selectedDatesObj, dateStr, instance) {
-      // 日付が選択されるたびにリストを更新
-      selectedDates = selectedDatesObj.map(d => instance.formatDate(d, "Y-m-d (D)"));
-      renderSelectedDates();
-    }
-  });
-
-  // 「出欠表を作成」ボタン
-  document.getElementById('btn-create-event').addEventListener('click', async () => {
-    const eventName = document.getElementById('event-name').value.trim();
-    if (!eventName) {
-      alert("イベント名を入力してください。");
-      return;
-    }
-    if (selectedDates.length === 0) {
-      alert("候補日を1つ以上選択してください。");
-      return;
-    }
-
-    // 各日程の時間設定を取得
-    const datesData = selectedDates.map((date, index) => {
-      const timeInput = document.getElementById(`time-${index}`).value;
-      return { date: date, time: timeInput };
-    });
-
-    const newEvent = {
-      name: eventName,
-      dates: datesData
-    };
-
-    // Apiを通じて保存
-    const newId = await Api.createEvent(newEvent);
-    
-    // 作成完了したら、自分のページのURLパラメータにIDをつけて遷移
-    window.location.href = `${window.location.origin}${window.location.pathname}?id=${newId}`;
-  });
-}
-
-// 選択された候補日のリストを描画する
-function renderSelectedDates() {
-  const container = document.getElementById('selected-dates');
-  container.innerHTML = '';
-  const defaultTime = document.getElementById('default-time').value.trim();
-
-  selectedDates.forEach((date, index) => {
-    const div = document.createElement('div');
-    div.className = 'date-item';
-    div.innerHTML = `
-      <span>${date}</span>
-      <input type="text" id="time-${index}" value="${defaultTime}" placeholder="時間 (例: 19:00〜)">
-    `;
-    container.appendChild(div);
-  });
-}
-
-
-/* --- 回答・出欠表画面のロジック --- */
-
-async function loadEventScreen(eventId) {
-  const event = await Api.getEvent(eventId);
-  if (!event) {
-    alert("イベントが見つかりません。削除されたかURLが間違っています。");
-    window.location.href = window.location.pathname; // トップへ戻る
-    return;
-  }
-  currentEventData = event;
-  showView('view-event');
-
-  // イベント情報の設定
-  document.getElementById('display-event-name').textContent = event.name;
-  
-  // 共有リンクの設定
-  const shareUrl = `${window.location.origin}${window.location.pathname}?id=${eventId}`;
-  const shareLinkEl = document.getElementById('share-link');
-  shareLinkEl.href = shareUrl;
-  shareLinkEl.textContent = shareUrl;
-
-  // 出欠表と回答フォームの描画
-  renderAttendanceTable();
-  renderAttendanceForm();
-
-  // ホームに戻るボタン
-  document.getElementById('btn-go-home').addEventListener('click', () => {
-    window.location.href = window.location.pathname;
-  });
-
-  // 回答送信ボタン
-  document.getElementById('btn-submit-response').onclick = async () => {
-    const name = document.getElementById('user-name').value.trim();
-    if (!name) {
-      alert("お名前を入力してください。");
-      return;
-    }
-
-    const comment = document.getElementById('user-comment').value.trim();
-    const attendances = {};
-
-    // 各日程の選択状態を取得
-    event.dates.forEach((d, i) => {
-      const selected = document.querySelector(`input[name="attend-${i}"]:checked`);
-      attendances[d.date] = selected ? selected.value : '△'; // デフォルトは未定
-    });
-
-    const responseData = { name, comment, attendances };
-
-    // Apiを通じて保存
-    await Api.submitResponse(eventId, responseData);
-    
-    alert("回答を送信しました！");
-    // 画面を再読み込みして最新データを表示
-    window.location.reload();
-  };
-}
-
-// 出欠表（テーブル）を描画
-function renderAttendanceTable() {
-  const table = document.getElementById('attendance-table');
-  const event = currentEventData;
-  let html = '';
-
-  // ヘッダー行 (日程/集計/回答者名...)
-  html += '<tr>';
-  html += '<th>日程</th>';
-  html += '<th>集計</th>';
-  event.responses.forEach(res => {
-    // コメントがあればアイコンを表示（ホバーでツールチップ）
-    const commentHtml = res.comment ? `<span class="comment-icon" title="${res.comment}">💬</span>` : '';
-    html += `<th>${res.name}${commentHtml}</th>`;
-  });
-  html += '</tr>';
-
-  // データ行
-  event.dates.forEach(d => {
-    html += '<tr>';
-    html += `<td>${d.date}<br><small>${d.time}</small></td>`;
-    
-    // この日程の集計を計算
-    let countO = 0, countT = 0, countX = 0;
-    event.responses.forEach(res => {
-      const mark = res.attendances[d.date];
-      if (mark === '●') countO++;
-      else if (mark === '△') countT++;
-      else if (mark === '×') countX++;
-    });
-    
-    // 集計セル
-    html += `<td>
-      <span class="mark-circle">●</span>${countO} 
-      <span class="mark-triangle">△</span>${countT} 
-      <span class="mark-cross">×</span>${countX}
-    </td>`;
-
-    // 各回答者のマーク
-    event.responses.forEach(res => {
-      const mark = res.attendances[d.date] || '-';
-      let cssClass = '';
-      if (mark === '●') cssClass = 'mark-circle';
-      else if (mark === '△') cssClass = 'mark-triangle';
-      else if (mark === '×') cssClass = 'mark-cross';
-      
-      html += `<td class="${cssClass}">${mark}</td>`;
-    });
-
-    html += '</tr>';
-  });
-
-  table.innerHTML = html;
-}
-
-// 回答入力フォームを描画
-function renderAttendanceForm() {
-  const container = document.getElementById('attendance-form-list');
-  container.innerHTML = '';
-  const event = currentEventData;
-
-  event.dates.forEach((d, i) => {
-    const div = document.createElement('div');
-    div.className = 'attendance-row';
-    div.innerHTML = `
-      <div><strong>${d.date}</strong> <small>${d.time}</small></div>
-      <div class="attendance-options">
-        <label><input type="radio" name="attend-${i}" value="●"> ● 出席</label>
-        <label><input type="radio" name="attend-${i}" value="△" checked> △ 未定</label>
-        <label><input type="radio" name="attend-${i}" value="×"> × 欠席</label>
-      </div>
-    `;
-    container.appendChild(div);
-  });
-}
-</script>
-
-</body>
-</html>
+    showCreate
