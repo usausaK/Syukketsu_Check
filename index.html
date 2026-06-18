@@ -233,14 +233,14 @@
     </div>
 
     <button id="btn-submit-response">回答を送信</button>
-    <button id="btn-go-home" style="background:#666; margin-left:10px;">新しくイベントを作る</button>
   </div>
 
 </div>
 
 <script type="module">
+  // onSnapshot（リアルタイム監視）を追加インポート
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getFirestore, doc, getDoc, setDoc, updateDoc, collection } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import { getFirestore, doc, setDoc, updateDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyAZNUBnvO0t4ExD99dHUQYkJUx1rIKO3hk",
@@ -253,7 +253,6 @@
 
   let app, db;
   
-  // エラーを画面に表示する関数
   function showError(message, errorObj) {
     const errorContainer = document.getElementById('error-container');
     errorContainer.classList.remove('hidden');
@@ -275,35 +274,35 @@
       const newEventRef = doc(collection(db, this.COLLECTION_NAME));
       const eventId = newEventRef.id;
       eventData.id = eventId;
-      eventData.responses = [];
+      // 改良: responses を配列ではなくオブジェクト（マップ）として初期化
+      eventData.responses = {}; 
       await setDoc(newEventRef, eventData);
       return eventId;
     },
 
-    async getEvent(eventId) {
-      const docRef = doc(db, this.COLLECTION_NAME, eventId);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        return docSnap.data();
-      }
-      return null;
-    },
-
     async submitResponse(eventId, responseData) {
       const docRef = doc(db, this.COLLECTION_NAME, eventId);
-      const docSnap = await getDoc(docRef);
-      if (!docSnap.exists()) throw new Error("Event not found");
-
-      const event = docSnap.data();
-      const index = event.responses.findIndex(r => r.name === responseData.name);
-      if (index >= 0) {
-        event.responses[index] = responseData;
-      } else {
-        event.responses.push(responseData);
-      }
       
-      await updateDoc(docRef, { responses: event.responses });
+      // 改良: データを一度取得して上書きするのではなく、
+      // データベース上で特定の人（名前）のデータだけをピンポイントで更新（統合）する
+      // これにより、他の人が同時に回答していても消えなくなります。
+      const updatePayload = {};
+      updatePayload[`responses.${responseData.name}`] = responseData;
+      
+      await updateDoc(docRef, updatePayload);
       return true;
+    },
+
+    // 改良: リアルタイムでデータの変更を監視する関数
+    listenEvent(eventId, callback, errorCallback) {
+      const docRef = doc(db, this.COLLECTION_NAME, eventId);
+      return onSnapshot(docRef, (docSnap) => {
+        if (docSnap.exists()) {
+          callback(docSnap.data());
+        } else {
+          callback(null); // 削除された場合など
+        }
+      }, errorCallback);
     }
   };
 
@@ -340,7 +339,6 @@
         return;
       }
       
-      // 不具合修正：画面上に生成されたHTMLのリストから直接日付と時間を取得する
       const dateItems = document.querySelectorAll('.date-item');
       if (dateItems.length === 0) {
         alert("候補日を1つ以上選択してください。");
@@ -388,74 +386,87 @@
   }
 
   async function loadEventScreen(eventId) {
-    try {
-      const event = await Api.getEvent(eventId);
-      if (!event) {
-        alert("イベントが見つかりません。");
+    // リアルタイムリスナーを開始
+    Api.listenEvent(eventId, (eventData) => {
+      if (!eventData) {
+        alert("イベントが見つかりません。削除された可能性があります。");
         window.location.href = window.location.pathname;
         return;
       }
-      currentEventData = event;
-      showView('view-event');
-
-      document.getElementById('display-event-name').textContent = event.name;
       
-      const shareUrl = `${window.location.origin}${window.location.pathname}?id=${eventId}`;
-      const shareLinkEl = document.getElementById('share-link');
-      shareLinkEl.href = shareUrl;
-      shareLinkEl.textContent = shareUrl;
+      // データが更新されるたびに画面を再描画
+      currentEventData = eventData;
+      
+      // 最初の読み込み時のみ画面切り替えとフォーム描画を行う
+      if (document.getElementById('view-event').classList.contains('hidden')) {
+        showView('view-event');
+        document.getElementById('display-event-name').textContent = eventData.name;
+        
+        const shareUrl = `${window.location.origin}${window.location.pathname}?id=${eventId}`;
+        const shareLinkEl = document.getElementById('share-link');
+        shareLinkEl.href = shareUrl;
+        shareLinkEl.textContent = shareUrl;
 
+        renderAttendanceForm();
+      }
+
+      // 出欠表は常に最新データで再描画
       renderAttendanceTable();
-      renderAttendanceForm();
 
-      document.getElementById('btn-go-home').addEventListener('click', () => {
-        window.location.href = window.location.pathname;
+    }, (error) => {
+      showError("データの読み込みに失敗しました。Firestoreの設定等を確認してください。", error);
+    });
+
+    // 回答送信ボタンのイベントリスナー（1度だけ登録）
+    document.getElementById('btn-submit-response').onclick = async () => {
+      const name = document.getElementById('user-name').value.trim();
+      if (!name) {
+        alert("お名前を入力してください。");
+        return;
+      }
+
+      const comment = document.getElementById('user-comment').value.trim();
+      const attendances = {};
+
+      currentEventData.dates.forEach((d, i) => {
+        const selected = document.querySelector(`input[name="attend-${i}"]:checked`);
+        attendances[d.date] = selected ? selected.value : '△';
       });
 
-      document.getElementById('btn-submit-response').onclick = async () => {
-        const name = document.getElementById('user-name').value.trim();
-        if (!name) {
-          alert("お名前を入力してください。");
-          return;
-        }
+      const responseData = { name, comment, attendances };
+      const btn = document.getElementById('btn-submit-response');
+      btn.disabled = true;
+      btn.textContent = "送信中...";
 
-        const comment = document.getElementById('user-comment').value.trim();
-        const attendances = {};
-
-        event.dates.forEach((d, i) => {
-          const selected = document.querySelector(`input[name="attend-${i}"]:checked`);
-          attendances[d.date] = selected ? selected.value : '△';
-        });
-
-        const responseData = { name, comment, attendances };
-
-        try {
-          await Api.submitResponse(eventId, responseData);
-          alert("回答を送信しました！");
-          window.location.reload();
-        } catch (error) {
-          showError("回答の送信に失敗しました。", error);
-        }
-      };
-    } catch (error) {
-      showError("データの読み込みに失敗しました。Firestoreの設定等を確認してください。", error);
-    }
+      try {
+        await Api.submitResponse(eventId, responseData);
+        // リロードは不要になりました（onSnapshotで自動更新されるため）
+        alert("回答を送信しました！\n下部または右側の出欠表に反映されます。");
+        // 名前欄は残し、コメント欄だけクリアする
+        document.getElementById('user-comment').value = '';
+      } catch (error) {
+        showError("回答の送信に失敗しました。", error);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "回答を送信";
+      }
+    };
   }
 
-  // === 表の描画処理をアップデートし、ハイライト機能を実装 ===
   function renderAttendanceTable() {
     const table = document.getElementById('attendance-table');
     const event = currentEventData;
     let html = '';
 
-    const hasResponses = event.responses && event.responses.length > 0;
+    // responses はオブジェクトなので配列に変換する
+    const responsesList = event.responses ? Object.values(event.responses) : [];
+    const hasResponses = responsesList.length > 0;
 
-    // 集計を計算し、最大出席数を求める
     let maxO = 0;
     const stats = event.dates.map(d => {
       let countO = 0, countT = 0, countX = 0;
       if (hasResponses) {
-        event.responses.forEach(res => {
+        responsesList.forEach(res => {
           const mark = res.attendances[d.date];
           if (mark === '●') countO++;
           else if (mark === '△') countT++;
@@ -468,7 +479,7 @@
 
     html += '<tr><th>日程</th><th>集計</th>';
     if (hasResponses) {
-      event.responses.forEach(res => {
+      responsesList.forEach(res => {
         const commentHtml = res.comment ? `<span class="comment-icon" title="${res.comment}">💬</span>` : '';
         html += `<th>${res.name}${commentHtml}</th>`;
       });
@@ -479,13 +490,11 @@
 
     event.dates.forEach((d, index) => {
       const st = stats[index];
-      // ハイライト条件: 回答が存在し、かつこの日の〇の数が最大値であり、かつ〇が1人以上いる
       const isBest = hasResponses && maxO > 0 && st.countO === maxO;
       const rowClass = isBest ? 'best-date' : '';
 
       html += `<tr class="${rowClass}">`;
       
-      // 王冠バッジの追加
       const badgeHtml = isBest ? '<span class="best-badge">👑 最多</span><br>' : '';
       html += `<td>${badgeHtml}${d.date}<br><small>${d.time}</small></td>`;
       
@@ -496,7 +505,7 @@
       </td>`;
 
       if (hasResponses) {
-        event.responses.forEach(res => {
+        responsesList.forEach(res => {
           const mark = res.attendances[d.date] || '-';
           let cssClass = '';
           if (mark === '●') cssClass = 'mark-circle';
@@ -537,7 +546,6 @@
     });
   }
 
-  // アプリの初期化処理を関数でラップして実行
   async function initApp() {
     try {
       const params = new URLSearchParams(window.location.search);
@@ -545,7 +553,8 @@
 
       if (id) {
         currentEventId = id;
-        await loadEventScreen(id);
+        // リスナーが初期化・画面遷移を担当
+        loadEventScreen(id);
       } else {
         showCreateScreen();
       }
@@ -554,7 +563,6 @@
     }
   }
 
-  // 実行開始
   initApp();
 
 </script>
