@@ -63,10 +63,25 @@
       gap: 10px;
       margin-bottom: 10px;
       background: #f9f9f9;
-      padding: 10px;
+      padding: 10px 15px;
       border-radius: 4px;
+      border: 1px solid #eee;
     }
-    .date-item input { width: auto; flex-grow: 1; }
+    .date-item input { width: 120px; flex-shrink: 0; }
+    .date-item span { flex-grow: 1; font-weight: bold; }
+    
+    /* 削除ボタンのスタイル */
+    .btn-remove {
+      background: transparent;
+      color: #c62828;
+      border: none;
+      font-size: 1.5em;
+      cursor: pointer;
+      padding: 0 5px;
+      margin-left: 5px;
+      transition: color 0.2s;
+    }
+    .btn-remove:hover { color: #ef5350; }
     
     /* 出欠表テーブル */
     .table-wrapper {
@@ -183,18 +198,20 @@
     
     <div class="form-group">
       <label for="default-time">基本の時間</label>
-      <input type="text" id="default-time" placeholder="例：19:00〜21:00">
-      <small style="color: #666;">※候補日を選んだ際、この時間がデフォルトで入力されます</small>
+      <input type="text" id="default-time" placeholder="例：19:00 & 21:00">
+      <small style="color: #666;">※「19:00 & 21:00」や「19:00, 21:00」のように区切って入力すると、1つの日付に対して複数の時間候補を一括で追加できます。</small>
     </div>
     
     <div class="form-group">
-      <label>候補日を選択</label>
-      <input type="text" id="calendar" placeholder="カレンダーから日付を複数選択">
+      <label>カレンダーから候補日を追加</label>
+      <input type="text" id="calendar" placeholder="ここをクリックして日付を追加">
     </div>
     
     <div class="form-group">
       <label>選択された候補日</label>
-      <div id="selected-dates" class="date-list"></div>
+      <div id="selected-dates" class="date-list">
+        <p style="color:#999; font-size:0.9em; margin:0;">上のカレンダーから日付を選ぶと、ここに追加されます。</p>
+      </div>
     </div>
     
     <button id="btn-create-event">出欠表を作成</button>
@@ -310,7 +327,9 @@
 
   let currentEventId = null;
   let currentEventData = null;
-  let selectedDates = [];
+  
+  // 【追加】候補日リストを管理するための配列
+  let selectedCandidateDates = [];
 
   function showView(viewId) {
     document.getElementById('view-loading').classList.add('hidden');
@@ -327,14 +346,39 @@
       mode: "multiple",
       dateFormat: "Y-m-d",
       onChange: function(selectedDatesObj, dateStr, instance) {
-        // 【追加】選択された日付を時系列（古い順）にソートする
-        const sortedDates = [...selectedDatesObj].sort((a, b) => a - b);
-        selectedDates = sortedDates.map(d => instance.formatDate(d, "Y-m-d (D)"));
+        if (selectedDatesObj.length === 0) return;
+
+        // 基本の時間を取得し、「&」や「,」などで分割して配列にする
+        const defaultTimeStr = document.getElementById('default-time').value.trim();
+        const timeArray = defaultTimeStr.split(/[,&、]+/).map(t => t.trim()).filter(t => t !== '');
+        if (timeArray.length === 0) timeArray.push(''); // 時間が空の場合は空文字で1枠作る
+
+        // 選ばれた日付それぞれについて、時間の数だけ候補を生成してリストに追加
+        selectedDatesObj.forEach(d => {
+          const dateText = instance.formatDate(d, "Y-m-d (D)");
+          const rawDate = instance.formatDate(d, "Y-m-d");
+          
+          timeArray.forEach(timeVal => {
+            // 重複チェック（全く同じ日付・時間が既にリストにある場合は追加しない）
+            const isExist = selectedCandidateDates.some(c => c.date === dateText && c.time === timeVal);
+            if (!isExist) {
+              selectedCandidateDates.push({ date: dateText, time: timeVal, raw: rawDate });
+            }
+          });
+        });
+
+        // カレンダーの選択状態をクリア（追加専用ツールとするため）
+        instance.clear();
+
+        // リストを時系列順にソート（日付が同じ場合は時間でソート）
+        selectedCandidateDates.sort((a, b) => {
+          if (a.raw !== b.raw) return new Date(a.raw) - new Date(b.raw);
+          return a.time.localeCompare(b.time);
+        });
+
         renderSelectedDates();
       }
     });
-
-    document.getElementById('default-time').addEventListener('input', renderSelectedDates);
 
     document.getElementById('btn-create-event').addEventListener('click', async () => {
       const eventName = document.getElementById('event-name').value.trim();
@@ -343,17 +387,14 @@
         return;
       }
       
-      const dateItems = document.querySelectorAll('.date-item');
-      if (dateItems.length === 0) {
-        alert("候補日を1つ以上選択してください。");
+      if (selectedCandidateDates.length === 0) {
+        alert("候補日を1つ以上追加してください。");
         return;
       }
 
-      // 画面上ですでに時系列ソートされているため、そのまま取得するだけでOK
-      const datesData = Array.from(dateItems).map((item) => {
-        const dateText = item.querySelector('span').textContent;
-        const timeInput = item.querySelector('input').value;
-        return { date: dateText, time: timeInput };
+      // Firestoreに保存するための形式に変換
+      const datesData = selectedCandidateDates.map((item) => {
+        return { date: item.date, time: item.time };
       });
 
       const newEvent = { name: eventName, dates: datesData };
@@ -367,30 +408,42 @@
     });
   }
 
+  // 候補日リストの描画処理
   function renderSelectedDates() {
     const container = document.getElementById('selected-dates');
-    const defaultTime = document.getElementById('default-time').value.trim();
-    
-    // 【修正】現在入力されている各時間を「日付の文字列」をキーにして保持する。
-    // こうすることで、ソートされて順番が入れ替わっても時間がズレません。
-    const currentTimes = {};
-    const dateItems = document.querySelectorAll('.date-item');
-    dateItems.forEach((item) => {
-      const dateText = item.querySelector('span').textContent;
-      const timeVal = item.querySelector('input').value;
-      currentTimes[dateText] = timeVal;
-    });
-
     container.innerHTML = '';
-    selectedDates.forEach((date, index) => {
+    
+    if (selectedCandidateDates.length === 0) {
+      container.innerHTML = '<p style="color:#999; font-size:0.9em; margin:0;">上のカレンダーから日付を選ぶと、ここに追加されます。</p>';
+      return;
+    }
+
+    selectedCandidateDates.forEach((item, index) => {
       const div = document.createElement('div');
       div.className = 'date-item';
-      const timeValue = currentTimes[date] !== undefined ? currentTimes[date] : defaultTime;
       div.innerHTML = `
-        <span>${date}</span>
-        <input type="text" id="time-${index}" value="${timeValue}" placeholder="時間 (例: 19:00〜)">
+        <span>${item.date}</span>
+        <input type="text" value="${item.time}" placeholder="時間" data-index="${index}" class="cand-time-input">
+        <button type="button" class="btn-remove" data-index="${index}" title="この候補を削除">&times;</button>
       `;
       container.appendChild(div);
+    });
+
+    // 各入力欄の変更を配列に反映させるイベント
+    document.querySelectorAll('.cand-time-input').forEach(input => {
+      input.addEventListener('change', (e) => {
+        const idx = e.target.getAttribute('data-index');
+        selectedCandidateDates[idx].time = e.target.value;
+      });
+    });
+
+    // ×ボタンの削除イベント
+    document.querySelectorAll('.btn-remove').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const idx = e.target.getAttribute('data-index');
+        selectedCandidateDates.splice(idx, 1); // 配列から該当要素を削除
+        renderSelectedDates(); // 再描画
+      });
     });
   }
 
@@ -461,7 +514,9 @@
       document.getElementById('user-comment').value = resData.comment || '';
       
       currentEventData.dates.forEach((d, i) => {
-        const userMark = resData.attendances[d.date] || '△';
+        // 同じ日付に対して複数の時間が存在するため、日付＋時間の組み合わせをキーにする
+        const uniqueKey = `${d.date}-${d.time}`;
+        const userMark = resData.attendances[uniqueKey] || '△';
         const radio = document.querySelector(`input[name="attend-${i}"][value="${userMark}"]`);
         if (radio) radio.checked = true;
       });
@@ -509,7 +564,9 @@
 
       currentEventData.dates.forEach((d, i) => {
         const selected = document.querySelector(`input[name="attend-${i}"]:checked`);
-        attendances[d.date] = selected ? selected.value : '△';
+        // 同じ日付で違う時間が存在するため、「日付-時間」をユニークキーとして保存する
+        const uniqueKey = `${d.date}-${d.time}`;
+        attendances[uniqueKey] = selected ? selected.value : '△';
       });
 
       const responseData = { name, comment, attendances };
@@ -538,9 +595,11 @@
 
     const stats = event.dates.map((d, index) => {
       let countO = 0, countT = 0, countX = 0;
+      const uniqueKey = `${d.date}-${d.time}`;
+      
       if (hasResponses) {
         responsesList.forEach(res => {
-          const mark = res.attendances[d.date];
+          const mark = res.attendances[uniqueKey];
           if (mark === '●') countO++;
           else if (mark === '△') countT++;
           else if (mark === '×') countX++;
@@ -586,6 +645,7 @@
     event.dates.forEach((d, index) => {
       const st = stats[index];
       const rank = rankMap[index];
+      const uniqueKey = `${d.date}-${d.time}`;
       
       let rowClass = '';
       let badgeHtml = '';
@@ -613,7 +673,7 @@
 
       if (hasResponses) {
         responsesList.forEach(res => {
-          const mark = res.attendances[d.date] || '-';
+          const mark = res.attendances[uniqueKey] || '-';
           let cssClass = '';
           if (mark === '●') cssClass = 'mark-circle';
           else if (mark === '△') cssClass = 'mark-triangle';
