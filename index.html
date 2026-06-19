@@ -367,8 +367,15 @@
           });
         });
 
+        // 現在の表示年月を記憶
+        const currentMonth = instance.currentMonth;
+        const currentYear = instance.currentYear;
+
         // カレンダーの選択状態をクリア（追加専用ツールとするため）
         instance.clear();
+
+        // 記憶していた年月に表示を戻す
+        instance.jumpToDate(new Date(currentYear, currentMonth, 1));
 
         // リストを時系列順にソート（日付が同じ場合は時間でソート）
         selectedCandidateDates.sort((a, b) => {
