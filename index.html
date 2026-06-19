@@ -70,6 +70,7 @@
     .date-item input { width: 120px; flex-shrink: 0; }
     .date-item span { flex-grow: 1; font-weight: bold; }
     
+    /* 削除ボタンのスタイル */
     .btn-remove {
       background: transparent;
       color: #c62828;
@@ -82,6 +83,7 @@
     }
     .btn-remove:hover { color: #ef5350; }
     
+    /* 出欠表テーブル */
     .table-wrapper {
       overflow-x: auto;
       margin-top: 20px;
@@ -139,6 +141,7 @@
       color: #666;
     }
     
+    /* エラー表示用 */
     .error-msg {
       color: #c62828;
       background: #ffebee;
@@ -150,7 +153,8 @@
       word-break: break-all;
     }
 
-    .rank-1 td { background-color: #fffde7 !important; }
+    /* === 順位バッジ・ハイライト用スタイル === */
+    .rank-1 td { background-color: #fffde7 !important; } /* 薄い黄色 */
     .rank-2 td { background-color: #fafafa !important; }
     .rank-3 td { background-color: #fafafa !important; }
     
@@ -176,11 +180,13 @@
 
 <div class="container">
   
+  <!-- ローディング表示 -->
   <div id="view-loading" class="loading">
     読み込み中...<br>
     <div id="error-container" class="error-msg hidden"></div>
   </div>
   
+  <!-- ================= 管理者・作成画面 ================= -->
   <div id="view-create" class="hidden">
     <h1>イベント日程調整</h1>
     <p>イベントの候補日を選んで、出欠表を作成しましょう。</p>
@@ -193,11 +199,12 @@
     <div class="form-group">
       <label for="default-time">基本の時間</label>
       <input type="text" id="default-time" placeholder="例：19:00 & 21:00">
-      <small style="color: #666;">※「19:00 & 21:00」のように区切って入力すると一括追加できます。</small>
+      <small style="color: #666;">※「19:00 & 21:00」や「19:00, 21:00」のように区切って入力すると、1つの日付に対して複数の時間候補を一括で追加できます。</small>
     </div>
     
     <div class="form-group">
       <label>カレンダーから候補日を追加</label>
+      <!-- 日付を選ぶたびにカレンダーが消えないように設定済み -->
       <input type="text" id="calendar" placeholder="ここをクリックして日付を追加">
     </div>
     
@@ -212,15 +219,17 @@
   </div>
 
 
+  <!-- ================= 回答・出欠表画面 ================= -->
   <div id="view-event" class="hidden">
     <h1 id="display-event-name"></h1>
     
     <div class="share-box">
       <strong>共有リンク:</strong><br>
       <a href="#" id="share-link" target="_blank"></a>
-      <p style="font-size: 0.9em; color: #555; margin-top: 5px;">参加者にこのURLを共有してください(^o^)☆彡</p>
+      <p style="font-size: 0.9em; color: #555; margin-top: 5px;">参加者にこのURLを共有してください。</p>
     </div>
 
+    <!-- 最上部に追加：回答の修正セクション -->
     <div id="edit-container" class="hidden" style="background: #fff3e0; padding: 15px; border-radius: 4px; margin-bottom: 25px; border: 1px solid #ffe082;">
       <label style="color: #e65100; font-weight: bold; display: block; margin-bottom: 5px;">自分の回答を修正する</label>
       <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
@@ -240,6 +249,7 @@
     <div class="form-group">
       <label for="user-name">お名前</label>
       <input type="text" id="user-name" placeholder="例：山田 太郎">
+      <small style="color: #666;">※同じ名前で入力すると回答が上書きされます。</small>
     </div>
 
     <div class="form-group" id="attendance-form-list"></div>
@@ -256,6 +266,7 @@
 </div>
 
 <script type="module">
+  // 認証（Authentication）を使わず、Firestoreのみをインポート
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getFirestore, doc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
@@ -268,14 +279,26 @@
     appId: "1:989847585888:web:6c1d3cc5923facc4dcef05"
   };
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+  let app, db;
 
-  // URL用の文字列エンコード関数
+  function showError(message, errorObj) {
+    const errorContainer = document.getElementById('error-container');
+    errorContainer.classList.remove('hidden');
+    errorContainer.innerHTML = `<strong>エラーが発生しました:</strong><br>${message}<br><br><small>${errorObj ? errorObj.toString() : ''}</small>`;
+    console.error(errorObj);
+  }
+
+  try {
+    app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+  } catch (error) {
+    showError("Firebaseの初期化に失敗しました。設定値を確認してください。", error);
+  }
+
+  // URL用の文字列エンコード関数（末尾に (^o^)☆彡 を付ける）
   function getShareUrl(eventId) {
     const baseUrl = `${window.location.origin}${window.location.pathname}`;
-    // (^o^)☆彡 をパーセントエンコーディングした文字列
-    const suffix = "%28%5Eo%5E%29%E2%98%86%E5%BD%A1";
+    const suffix = "%28%5Eo%5E%29%E2%98%86%E5%BD%A1"; // (^o^)☆彡 のエンコード
     return `${baseUrl}?id=${eventId}#${suffix}`;
   }
 
@@ -297,6 +320,18 @@
       const updatePayload = {};
       updatePayload[`responses.${responseData.name}`] = responseData;
       await updateDoc(docRef, updatePayload);
+      return true;
+    },
+
+    listenEvent(eventId, callback, errorCallback) {
+      const docRef = doc(db, 'events', eventId);
+      return onSnapshot(docRef, (docSnap) => {
+        if (docSnap.exists()) {
+          callback(docSnap.data());
+        } else {
+          callback(null);
+        }
+      }, errorCallback);
     }
   };
 
@@ -309,10 +344,11 @@
     document.getElementById(viewId).classList.remove('hidden');
   }
 
-  // 簡略化された初期表示処理
+  // アプリケーション初期化
   function initApp() {
     const params = new URLSearchParams(window.location.search);
     const id = params.get('id');
+
     if (id) {
       currentEventId = id;
       loadEventScreen(id);
@@ -323,26 +359,374 @@
 
   function showCreateScreen() {
     showView('view-create');
-    // フラットピッカー等の省略
-  }
 
-  async function loadEventScreen(eventId) {
-    showView('view-event');
-    const docRef = doc(db, 'events', eventId);
-    onSnapshot(docRef, (docSnap) => {
-      if (docSnap.exists()) {
-        currentEventData = docSnap.data();
-        document.getElementById('display-event-name').textContent = currentEventData.name;
-        
-        const shareUrl = getShareUrl(eventId);
-        const link = document.getElementById('share-link');
-        link.href = shareUrl;
-        link.textContent = shareUrl;
+    // Flatpickrの初期化（カレンダーを閉じない設定: closeOnSelect: false）
+    flatpickr("#calendar", {
+      locale: "ja",
+      mode: "multiple",
+      dateFormat: "Y-m-d",
+      closeOnSelect: false,
+      onChange: function(selectedDatesObj, dateStr, instance) {
+        if (selectedDatesObj.length === 0) return;
+
+        const defaultTimeStr = document.getElementById('default-time').value.trim();
+        const timeArray = defaultTimeStr.split(/[,&、]+/).map(t => t.trim()).filter(t => t !== '');
+        if (timeArray.length === 0) timeArray.push('');
+
+        selectedDatesObj.forEach(d => {
+          const dateText = instance.formatDate(d, "Y-m-d (D)");
+          const rawDate = instance.formatDate(d, "Y-m-d");
+          
+          timeArray.forEach(timeVal => {
+            const isExist = selectedCandidateDates.some(c => c.date === dateText && c.time === timeVal);
+            if (!isExist) {
+              selectedCandidateDates.push({ date: dateText, time: timeVal, raw: rawDate });
+            }
+          });
+        });
+
+        // 追加後はカレンダー上の選択表示をクリアし、元の表示月に戻す
+        const currentMonth = instance.currentMonth;
+        const currentYear = instance.currentYear;
+        instance.clear();
+        instance.jumpToDate(new Date(currentYear, currentMonth, 1));
+
+        // 時系列ソート
+        selectedCandidateDates.sort((a, b) => {
+          if (a.raw !== b.raw) return new Date(a.raw) - new Date(b.raw);
+          return a.time.localeCompare(b.time);
+        });
+
+        renderSelectedDates();
+      }
+    });
+
+    document.getElementById('btn-create-event').addEventListener('click', async () => {
+      const eventName = document.getElementById('event-name').value.trim();
+      if (!eventName) {
+        alert("イベント名を入力してください。");
+        return;
+      }
+      
+      if (selectedCandidateDates.length === 0) {
+        alert("候補日を1つ以上追加してください。");
+        return;
+      }
+
+      const datesData = selectedCandidateDates.map((item) => {
+        return { date: item.date, time: item.time };
+      });
+
+      const newEvent = { name: eventName, dates: datesData };
+
+      try {
+        const newId = await Api.createEvent(newEvent);
+        // 作成後はURLにIDを含めて画面遷移
+        window.location.href = `${window.location.origin}${window.location.pathname}?id=${newId}`;
+      } catch (error) {
+        showError("イベントの作成に失敗しました。Firestoreの権限（セキュリティルール）などを確認してください。", error);
       }
     });
   }
 
+  function renderSelectedDates() {
+    const container = document.getElementById('selected-dates');
+    container.innerHTML = '';
+    
+    if (selectedCandidateDates.length === 0) {
+      container.innerHTML = '<p style="color:#999; font-size:0.9em; margin:0;">上のカレンダーから日付を選ぶと、ここに追加されます。</p>';
+      return;
+    }
+
+    selectedCandidateDates.forEach((item, index) => {
+      const div = document.createElement('div');
+      div.className = 'date-item';
+      div.innerHTML = `
+        <span>${item.date}</span>
+        <input type="text" value="${item.time}" placeholder="時間" data-index="${index}" class="cand-time-input">
+        <button type="button" class="btn-remove" data-index="${index}" title="この候補を削除">&times;</button>
+      `;
+      container.appendChild(div);
+    });
+
+    document.querySelectorAll('.cand-time-input').forEach(input => {
+      input.addEventListener('change', (e) => {
+        const idx = e.target.getAttribute('data-index');
+        selectedCandidateDates[idx].time = e.target.value;
+      });
+    });
+
+    document.querySelectorAll('.btn-remove').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const idx = e.target.getAttribute('data-index');
+        selectedCandidateDates.splice(idx, 1);
+        renderSelectedDates();
+      });
+    });
+  }
+
+  async function loadEventScreen(eventId) {
+    Api.listenEvent(eventId, (eventData) => {
+      // ローディングを隠す
+      document.getElementById('view-loading').classList.add('hidden');
+
+      if (!eventData) {
+        alert("イベントが見つかりません。");
+        window.location.href = window.location.pathname;
+        return;
+      }
+      
+      currentEventData = eventData;
+      
+      if (document.getElementById('view-event').classList.contains('hidden')) {
+        showView('view-event');
+        document.getElementById('display-event-name').textContent = eventData.name;
+        
+        const shareUrl = getShareUrl(eventId);
+        const shareLinkEl = document.getElementById('share-link');
+        shareLinkEl.href = shareUrl;
+        shareLinkEl.textContent = shareUrl;
+
+        renderAttendanceForm();
+      }
+
+      const selectEl = document.getElementById('edit-user-select');
+      const prevSelected = selectEl.value;
+      selectEl.innerHTML = '<option value="">-- 名前を選択 --</option>';
+      
+      const responsesList = eventData.responses ? Object.values(eventData.responses) : [];
+      if (responsesList.length > 0) {
+        document.getElementById('edit-container').classList.remove('hidden');
+        responsesList.forEach(res => {
+          const opt = document.createElement('option');
+          opt.value = res.name;
+          opt.textContent = res.name;
+          selectEl.appendChild(opt);
+        });
+        if (prevSelected && eventData.responses[prevSelected]) {
+          selectEl.value = prevSelected;
+        }
+      } else {
+        document.getElementById('edit-container').classList.add('hidden');
+      }
+
+      renderAttendanceTable();
+
+    }, (error) => {
+      document.getElementById('view-loading').classList.add('hidden');
+      showError("データの読み込みに失敗しました。", error);
+    });
+
+    document.getElementById('btn-start-edit').onclick = () => {
+      const selectedName = document.getElementById('edit-user-select').value;
+      if (!selectedName) {
+        alert("修正したいお名前を選択してください。");
+        return;
+      }
+      
+      const resData = currentEventData.responses[selectedName];
+      if (!resData) return;
+      
+      document.getElementById('user-name').value = resData.name;
+      document.getElementById('user-name').disabled = true;
+      document.getElementById('user-name').style.backgroundColor = '#e0e0e0';
+      document.getElementById('user-comment').value = resData.comment || '';
+      
+      currentEventData.dates.forEach((d, i) => {
+        const uniqueKey = `${d.date}-${d.time}`;
+        const userMark = resData.attendances[uniqueKey] || '△';
+        const radio = document.querySelector(`input[name="attend-${i}"][value="${userMark}"]`);
+        if (radio) radio.checked = true;
+      });
+      
+      document.getElementById('form-title').textContent = `出欠を修正する（${selectedName}さん）`;
+      document.getElementById('btn-submit-response').textContent = "修正を保存する";
+      document.getElementById('btn-cancel-edit').classList.remove('hidden');
+      
+      document.getElementById('form-title').scrollIntoView({ behavior: 'smooth' });
+    };
+
+    document.getElementById('btn-cancel-edit').onclick = () => {
+      resetForm();
+    };
+
+    function resetForm() {
+      document.getElementById('user-name').value = '';
+      document.getElementById('user-name').disabled = false;
+      document.getElementById('user-name').style.backgroundColor = '';
+      document.getElementById('user-comment').value = '';
+      document.getElementById('form-title').textContent = "出欠を入力する";
+      document.getElementById('btn-submit-response').textContent = "回答を送信";
+      document.getElementById('btn-cancel-edit').classList.add('hidden');
+      
+      if (currentEventData && currentEventData.dates) {
+        currentEventData.dates.forEach((d, i) => {
+          const radio = document.querySelector(`input[name="attend-${i}"][value="△"]`);
+          if (radio) radio.checked = true;
+        });
+      }
+    }
+
+    document.getElementById('btn-submit-response').onclick = async () => {
+      const name = document.getElementById('user-name').value.trim();
+      if (!name) {
+        alert("お名前を入力してください。");
+        return;
+      }
+
+      const comment = document.getElementById('user-comment').value.trim();
+      const attendances = {};
+
+      currentEventData.dates.forEach((d, i) => {
+        const selected = document.querySelector(`input[name="attend-${i}"]:checked`);
+        const uniqueKey = `${d.date}-${d.time}`;
+        attendances[uniqueKey] = selected ? selected.value : '△';
+      });
+
+      const responseData = { name, comment, attendances };
+      const btn = document.getElementById('btn-submit-response');
+      btn.disabled = true;
+
+      try {
+        await Api.submitResponse(eventId, responseData);
+        alert("回答を保存しました！");
+        resetForm();
+      } catch (error) {
+        showError("回答の送信に失敗しました。", error);
+      } finally {
+        btn.disabled = false;
+      }
+    };
+  }
+
+  function renderAttendanceTable() {
+    const table = document.getElementById('attendance-table');
+    const event = currentEventData;
+    let html = '';
+
+    const responsesList = event.responses ? Object.values(event.responses) : [];
+    const hasResponses = responsesList.length > 0;
+
+    const stats = event.dates.map((d, index) => {
+      let countO = 0, countT = 0, countX = 0;
+      const uniqueKey = `${d.date}-${d.time}`;
+      
+      if (hasResponses) {
+        responsesList.forEach(res => {
+          const mark = res.attendances[uniqueKey];
+          if (mark === '●') countO++;
+          else if (mark === '△') countT++;
+          else if (mark === '×') countX++;
+        });
+      }
+      return { countO, countT, countX, index };
+    });
+
+    const sortedStats = [...stats].filter(s => s.countO > 0).sort((a, b) => b.countO - a.countO);
+    let currentRank = 1;
+    let currentScore = -1;
+    let actualRank = 1;
+    const rankMap = {};
+    
+    sortedStats.forEach(s => {
+      if (s.countO !== currentScore) {
+        currentRank = actualRank;
+        currentScore = s.countO;
+      }
+      if (currentRank <= 3) {
+        rankMap[s.index] = currentRank;
+      }
+      actualRank++;
+    });
+
+    html += '<tr><th>日程</th><th>集計</th>';
+    if (hasResponses) {
+      responsesList.forEach(res => {
+        const commentHtml = res.comment 
+          ? `<div style="font-size: 0.8em; color: #555; font-weight: normal; margin-top: 6px; white-space: normal; min-width: 90px; text-align: left; padding: 5px; background: #fff; border-radius: 4px; border: 1px solid #ccc; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">${res.comment}</div>` 
+          : '';
+        html += `<th style="vertical-align: top;">${res.name}${commentHtml}</th>`;
+      });
+    } else {
+      html += '<th>回答者</th>';
+    }
+    html += '</tr>';
+
+    event.dates.forEach((d, index) => {
+      const st = stats[index];
+      const rank = rankMap[index];
+      const uniqueKey = `${d.date}-${d.time}`;
+      
+      let rowClass = '';
+      let badgeHtml = '';
+      
+      if (hasResponses && rank) {
+        if (rank === 1) {
+          rowClass = 'rank-1';
+          badgeHtml = '<span class="badge badge-1">👑 1位</span><br>';
+        } else if (rank === 2) {
+          rowClass = 'rank-2';
+          badgeHtml = '<span class="badge badge-2">🥈 2位</span><br>';
+        } else if (rank === 3) {
+          rowClass = 'rank-3';
+          badgeHtml = '<span class="badge badge-3">🥉 3位</span><br>';
+        }
+      }
+
+      html += `<tr class="${rowClass}">`;
+      html += `<td>${badgeHtml}${d.date}<br><small>${d.time}</small></td>`;
+      html += `<td class="stats-cell">
+        <span class="mark-circle">●</span>${st.countO} 
+        <span class="mark-triangle">△</span>${st.countT} 
+        <span class="mark-cross">×</span>${st.countX}
+      </td>`;
+
+      if (hasResponses) {
+        responsesList.forEach(res => {
+          const mark = res.attendances[uniqueKey] || '-';
+          let cssClass = '';
+          if (mark === '●') cssClass = 'mark-circle';
+          else if (mark === '△') cssClass = 'mark-triangle';
+          else if (mark === '×') cssClass = 'mark-cross';
+          
+          html += `<td class="${cssClass}">${mark}</td>`;
+        });
+      } else {
+        html += `<td style="color: #999; font-size: 0.9em;">まだ回答がありません</td>`;
+      }
+
+      html += '</tr>';
+    });
+
+    table.innerHTML = html;
+  }
+
+  function renderAttendanceForm() {
+    const container = document.getElementById('attendance-form-list');
+    container.innerHTML = '';
+    const event = currentEventData;
+
+    if (!event.dates || event.dates.length === 0) return;
+
+    event.dates.forEach((d, i) => {
+      const div = document.createElement('div');
+      div.className = 'attendance-row';
+      div.innerHTML = `
+        <div><strong>${d.date}</strong> <small>${d.time}</small></div>
+        <div class="attendance-options">
+          <label><input type="radio" name="attend-${i}" value="●"> ● OK</label>
+          <label><input type="radio" name="attend-${i}" value="△" checked> △ 未定</label>
+          <label><input type="radio" name="attend-${i}" value="×"> × 不可</label>
+        </div>
+      `;
+      container.appendChild(div);
+    });
+  }
+
+  // 実行開始
   initApp();
+
 </script>
+
 </body>
 </html>
