@@ -297,8 +297,14 @@
     COLLECTION_NAME: 'events',
 
     async createEvent(eventData) {
-      const newEventRef = doc(collection(db, this.COLLECTION_NAME));
-      const eventId = newEventRef.id;
+      // 短いランダムなID(8文字)を生成
+      let eventId = '';
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      for (let i = 0; i < 8; i++) {
+        eventId += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      
+      const newEventRef = doc(db, this.COLLECTION_NAME, eventId);
       eventData.id = eventId;
       eventData.responses = {}; 
       await setDoc(newEventRef, eventData);
@@ -711,9 +717,9 @@
       div.innerHTML = `
         <div><strong>${d.date}</strong> <small>${d.time}</small></div>
         <div class="attendance-options">
-          <label><input type="radio" name="attend-${i}" value="●"> ● 出席</label>
+          <label><input type="radio" name="attend-${i}" value="●"> ● OK</label>
           <label><input type="radio" name="attend-${i}" value="△" checked> △ 未定</label>
-          <label><input type="radio" name="attend-${i}" value="×"> × 欠席</label>
+          <label><input type="radio" name="attend-${i}" value="×"> × 不可</label>
         </div>
       `;
       container.appendChild(div);
