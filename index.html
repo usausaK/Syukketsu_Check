@@ -298,8 +298,7 @@
   // URL用の文字列エンコード関数（末尾に (^o^)☆彡 を付ける）
   function getShareUrl(eventId) {
     const baseUrl = `${window.location.origin}${window.location.pathname}`;
-    const suffix = "%28%5Eo%5E%29%E2%98%86%E5%BD%A1"; // (^o^)☆彡 のエンコード
-    return `${baseUrl}?id=${eventId}#${suffix}`;
+    return `${baseUrl}?id=${eventId}#(^o^)☆彡`;
   }
 
   const Api = {
@@ -340,7 +339,9 @@
   let selectedCandidateDates = [];
 
   function showView(viewId) {
-    document.querySelectorAll('.container > div:not(#view-loading)').forEach(el => el.classList.add('hidden'));
+    document.getElementById('view-loading').classList.add('hidden');
+    document.getElementById('view-create').classList.add('hidden');
+    document.getElementById('view-event').classList.add('hidden');
     document.getElementById(viewId).classList.remove('hidden');
   }
 
@@ -421,8 +422,8 @@
 
       try {
         const newId = await Api.createEvent(newEvent);
-        // 作成後はURLにIDを含めて画面遷移
-        window.location.href = `${window.location.origin}${window.location.pathname}?id=${newId}`;
+        // 作成後はURLにIDと顔文字を含めて画面遷移
+        window.location.href = getShareUrl(newId);
       } catch (error) {
         showError("イベントの作成に失敗しました。Firestoreの権限（セキュリティルール）などを確認してください。", error);
       }
