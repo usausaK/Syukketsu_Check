@@ -3,12 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>日程調整アプリ (Firebase版)</title>
-  
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ja.js"></script>
-
+  <title>イベント日程調整</title>
   <style>
     :root {
       --primary: #1976d2;
@@ -16,9 +11,10 @@
       --text: #333;
       --border: #ccc;
     }
+    * { box-sizing: border-box; }
     body {
       font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
-      background-color: var(--bg);
+      background: var(--bg);
       color: var(--text);
       line-height: 1.6;
       margin: 0;
@@ -30,215 +26,136 @@
       background: #fff;
       padding: 30px;
       border-radius: 8px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 6px rgba(0,0,0,.1);
     }
     h1, h2 { color: var(--primary); }
-    
+    h1 { margin-top: 0; }
+    .hidden { display: none !important; }
+    .loading { text-align: center; padding: 40px; color: #666; font-size: 1.1rem; }
+    .notice {
+      text-align: center;
+      padding: 34px 16px;
+      color: #666;
+    }
     .form-group { margin-bottom: 20px; }
     label { display: block; font-weight: bold; margin-bottom: 5px; }
-    input[type="text"], input[type="text"].flatpickr-input, select {
+    input[type="text"], select {
       width: 100%;
       padding: 10px;
       border: 1px solid var(--border);
       border-radius: 4px;
-      box-sizing: border-box;
     }
     button {
-      background-color: var(--primary);
+      background: var(--primary);
       color: #fff;
-      border: none;
+      border: 0;
       padding: 12px 20px;
       font-size: 16px;
       border-radius: 4px;
       cursor: pointer;
-      transition: background 0.3s;
     }
-    button:hover { background-color: #115293; }
-    
-    .date-list { margin-top: 10px; }
-    .date-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 10px;
-      background: #f9f9f9;
-      padding: 10px 15px;
-      border-radius: 4px;
-      border: 1px solid #eee;
-    }
-    .date-item input { width: 120px; flex-shrink: 0; }
-    .date-item span { flex-grow: 1; font-weight: bold; }
-    
-    .btn-remove {
-      background: transparent;
-      color: #c62828;
-      border: none;
-      font-size: 1.5em;
-      cursor: pointer;
-      padding: 0 5px;
-      margin-left: 5px;
-      transition: color 0.2s;
-    }
-    .btn-remove:hover { color: #ef5350; }
-    
-    /* 大人数（25人等）に対応するスクロール可能な表設計 */
+    button:hover { background: #115293; }
+    button:disabled { opacity: .55; cursor: default; }
     .table-wrapper {
       overflow-x: auto;
-      margin-top: 20px;
-      margin-bottom: 30px;
+      margin: 20px 0 30px;
       border: 1px solid var(--border);
       -webkit-overflow-scrolling: touch;
     }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      /* 基本は折り返し禁止にして表が潰れないようにする */
-      white-space: nowrap; 
+    table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+    th, td { border: 1px solid var(--border); padding: 10px; text-align: center; min-width: 50px; }
+    th { background: #f1f1f1; }
+    #attendance-table th:first-child,
+    #attendance-table td:first-child {
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      background: #f9f9f9;
+      text-align: left;
     }
-    th, td {
-      border: 1px solid var(--border);
-      padding: 10px;
-      text-align: center;
-      min-width: 50px;
-    }
-    th { background-color: #f1f1f1; }
-    
-    /* 人数が増えても名前とコメントが読めるように最低幅を確保 */
     .user-col {
       min-width: 100px;
       max-width: 160px;
-      white-space: normal; /* ここだけは折り返しを許可 */
-      word-break: break-all;
+      white-space: normal;
+      word-break: break-word;
     }
-
-    th:first-child, td:first-child {
-      position: sticky;
-      left: 0;
-      background-color: #f9f9f9;
-      z-index: 1;
-      text-align: left;
-    }
-    
     .mark-circle { color: #2e7d32; font-weight: bold; font-size: 1.2em; }
     .mark-triangle { color: #f57f17; font-weight: bold; font-size: 1.2em; }
     .mark-cross { color: #c62828; font-weight: bold; font-size: 1.2em; }
-
-    .share-box {
-      background: #e3f2fd;
-      padding: 15px;
-      border-radius: 4px;
-      margin-bottom: 20px;
-      word-break: break-all;
-    }
-
     .attendance-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 12px;
       padding: 10px 0;
       border-bottom: 1px dashed var(--border);
     }
     .attendance-row:last-child { border-bottom: none; }
-    .attendance-options label { margin-right: 15px; font-weight: normal; cursor: pointer; }
-
-    .hidden { display: none !important; }
-    
-    .loading {
-      text-align: center;
-      padding: 40px;
-      font-size: 1.2em;
-      color: #666;
+    .attendance-options label { display: inline-block; margin: 0 15px 0 0; font-weight: normal; cursor: pointer; }
+    .edit-box {
+      background: #fff3e0;
+      padding: 15px;
+      border: 1px solid #ffe082;
+      border-radius: 4px;
+      margin-bottom: 25px;
     }
-    
+    .edit-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .edit-row select { width: auto; min-width: 180px; }
+    .btn-edit { background: #ef6c00; padding: 8px 15px; font-size: 14px; }
+    .btn-cancel { background: #666; margin-left: 10px; }
+    .rank-1 td { background: #fffde7 !important; }
+    .rank-2 td, .rank-3 td { background: #fafafa !important; }
+    .badge {
+      display: inline-block;
+      color: #fff;
+      font-size: .75em;
+      padding: 3px 6px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+      font-weight: bold;
+    }
+    .badge-1 { background: #fbc02d; }
+    .badge-2 { background: #9e9e9e; }
+    .badge-3 { background: #8d6e63; }
+    .stats-cell { white-space: nowrap; }
     .error-msg {
       color: #c62828;
       background: #ffebee;
       padding: 15px;
       border-radius: 4px;
       margin-top: 20px;
-      text-align: left;
-      font-size: 0.9em;
-      word-break: break-all;
+      word-break: break-word;
     }
-
-    .rank-1 td { background-color: #fffde7 !important; }
-    .rank-2 td { background-color: #fafafa !important; }
-    .rank-3 td { background-color: #fafafa !important; }
-    
-    .badge {
-      display: inline-block;
-      color: #fff;
-      font-size: 0.75em;
-      padding: 3px 6px;
-      border-radius: 4px;
-      margin-bottom: 6px;
-      font-weight: bold;
-    }
-    .badge-1 { background-color: #fbc02d; }
-    .badge-2 { background-color: #9e9e9e; }
-    .badge-3 { background-color: #8d6e63; }
-
-    .stats-cell {
-      white-space: nowrap;
+    @media (max-width: 640px) {
+      body { padding: 10px; }
+      .container { padding: 18px; }
+      h1 { font-size: 1.55rem; }
+      h2 { font-size: 1.25rem; }
+      .attendance-row { flex-direction: column; align-items: flex-start; }
+      .attendance-options { display: flex; gap: 10px; flex-wrap: wrap; }
+      .attendance-options label { margin-right: 0; }
     }
   </style>
 </head>
 <body>
-
 <div class="container">
-  
-  <div id="view-loading" class="loading">
-    読み込み中...<br>
-    <div id="error-container" class="error-msg hidden"></div>
-  </div>
-  
-  <div id="view-create" class="hidden">
-    <h1>イベント日程調整</h1>
-    <p>イベントの候補日を選んで、出欠表を作成しましょう。</p>
-    
-    <div class="form-group">
-      <label for="event-name">イベント名</label>
-      <input type="text" id="event-name" placeholder="例：部署の飲み会">
-    </div>
-    
-    <div class="form-group">
-      <label for="default-time">基本の時間</label>
-      <input type="text" id="default-time" placeholder="例：19:00 & 21:00">
-      <small style="color: #666;">※「19:00 & 21:00」のように区切って入力すると一括追加できます。</small>
-    </div>
-    
-    <div class="form-group">
-      <label>カレンダーから候補日を追加</label>
-      <input type="text" id="calendar" placeholder="ここをクリックして日付を追加">
-    </div>
-    
-    <div class="form-group">
-      <label>選択された候補日</label>
-      <div id="selected-dates" class="date-list">
-        <p style="color:#999; font-size:0.9em; margin:0;">上のカレンダーから日付を選ぶと、ここに追加されます。</p>
-      </div>
-    </div>
-    
-    <button id="btn-create-event">出欠表を作成</button>
-  </div>
+  <div id="view-loading" class="loading">読み込み中...</div>
 
+  <div id="view-no-link" class="hidden notice">
+    <h1>イベント日程調整</h1>
+    <p>このページは、主催者から共有されたイベントリンクからご利用ください。</p>
+  </div>
 
   <div id="view-event" class="hidden">
     <h1 id="display-event-name"></h1>
-    
-    <div class="share-box">
-      <strong>共有リンク:</strong><br>
-      <a href="#" id="share-link" target="_blank"></a>
-      <p style="font-size: 0.9em; color: #555; margin-top: 5px;">参加者にこのURLを共有してください。</p>
-    </div>
 
-    <div id="edit-container" class="hidden" style="background: #fff3e0; padding: 15px; border-radius: 4px; margin-bottom: 25px; border: 1px solid #ffe082;">
-      <label style="color: #e65100; font-weight: bold; display: block; margin-bottom: 5px;">自分の回答を修正する</label>
-      <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-        <select id="edit-user-select" style="width: auto; min-width: 180px; padding: 8px;">
+    <div id="edit-container" class="edit-box hidden">
+      <label style="color:#e65100;">自分の回答を修正する</label>
+      <div class="edit-row">
+        <select id="edit-user-select">
           <option value="">-- 名前を選択 --</option>
         </select>
-        <button id="btn-start-edit" style="background-color: #ef6c00; padding: 8px 15px; font-size: 14px;">修正する</button>
+        <button id="btn-start-edit" class="btn-edit">修正する</button>
       </div>
     </div>
 
@@ -251,7 +168,7 @@
     <div class="form-group">
       <label for="user-name">お名前</label>
       <input type="text" id="user-name" placeholder="例：山田 太郎">
-      <small style="color: #666;">※全く同じ名前を入力すると上書きされます。フルネームでの入力をお勧めします。</small>
+      <small style="color:#666;">※全く同じ名前を入力すると上書きされます。フルネームでの入力をお勧めします。</small>
     </div>
 
     <div class="form-group" id="attendance-form-list"></div>
@@ -262,9 +179,9 @@
     </div>
 
     <button id="btn-submit-response">回答を送信</button>
-    <button id="btn-cancel-edit" class="hidden" style="background:#666; margin-left:10px;">修正をキャンセル</button>
+    <button id="btn-cancel-edit" class="btn-cancel hidden">修正をキャンセル</button>
+    <div id="error-container" class="error-msg hidden"></div>
   </div>
-
 </div>
 
 <script type="module">
@@ -280,372 +197,89 @@
     appId: "1:989847585888:web:6c1d3cc5923facc4dcef05"
   };
 
-  let app, db;
-
-  function showError(message, errorObj) {
-    const errorContainer = document.getElementById('error-container');
-    errorContainer.classList.remove('hidden');
-    errorContainer.innerHTML = `<strong>エラーが発生しました:</strong><br>${message}<br><br><small>${errorObj ? errorObj.toString() : ''}</small>`;
-    console.error(errorObj);
-  }
-
-  try {
-    app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
-  } catch (error) {
-    showError("Firebaseの初期化に失敗しました。設定値を確認してください。", error);
-  }
-
-  function getShareUrl(eventId) {
-    const baseUrl = `${window.location.origin}${window.location.pathname}`;
-    const suffix = "%28%5Eo%5E%29%E2%98%86%E5%BD%A1"; 
-    return `${baseUrl}?id=${eventId}#${suffix}`;
-  }
-
-  const Api = {
-    async createEvent(eventData) {
-      let eventId = '';
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-      for (let i = 0; i < 8; i++) eventId += chars.charAt(Math.floor(Math.random() * chars.length));
-      
-      const newEventRef = doc(db, 'events', eventId);
-      eventData.id = eventId;
-      eventData.responses = {}; 
-      await setDoc(newEventRef, eventData);
-      return eventId;
-    },
-
-    async submitResponse(eventId, responseData) {
-      const docRef = doc(db, 'events', eventId);
-      // 【重要】名前に「.」や特殊記号が含まれていても安全にデータを統合（マージ）するための修正
-      await setDoc(docRef, {
-        responses: {
-          [responseData.name]: responseData
-        }
-      }, { merge: true });
-      return true;
-    },
-
-    listenEvent(eventId, callback, errorCallback) {
-      const docRef = doc(db, 'events', eventId);
-      return onSnapshot(docRef, (docSnap) => {
-        if (docSnap.exists()) {
-          callback(docSnap.data());
-        } else {
-          callback(null);
-        }
-      }, errorCallback);
-    }
-  };
-
-  let currentEventId = null;
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
   let currentEventData = null;
-  let selectedCandidateDates = [];
+  let currentEventId = null;
 
-  function showView(viewId) {
-    document.getElementById('view-loading').classList.add('hidden');
-    document.getElementById('view-create').classList.add('hidden');
-    document.getElementById('view-event').classList.add('hidden');
-    document.getElementById(viewId).classList.remove('hidden');
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
-  function initApp() {
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get('id');
-
-    if (id) {
-      currentEventId = id;
-      loadEventScreen(id);
-    } else {
-      showCreateScreen();
-    }
-  }
-
-  function showCreateScreen() {
-    showView('view-create');
-
-    flatpickr("#calendar", {
-      locale: "ja",
-      mode: "multiple",
-      dateFormat: "Y-m-d",
-      closeOnSelect: false,
-      onChange: function(selectedDatesObj, dateStr, instance) {
-        if (selectedDatesObj.length === 0) return;
-
-        const defaultTimeStr = document.getElementById('default-time').value.trim();
-        const timeArray = defaultTimeStr.split(/[,&、]+/).map(t => t.trim()).filter(t => t !== '');
-        if (timeArray.length === 0) timeArray.push('');
-
-        selectedDatesObj.forEach(d => {
-          const dateText = instance.formatDate(d, "Y-m-d (D)");
-          const rawDate = instance.formatDate(d, "Y-m-d");
-          
-          timeArray.forEach(timeVal => {
-            const isExist = selectedCandidateDates.some(c => c.date === dateText && c.time === timeVal);
-            if (!isExist) {
-              selectedCandidateDates.push({ date: dateText, time: timeVal, raw: rawDate });
-            }
-          });
-        });
-
-        const currentMonth = instance.currentMonth;
-        const currentYear = instance.currentYear;
-        instance.clear();
-        instance.jumpToDate(new Date(currentYear, currentMonth, 1));
-
-        selectedCandidateDates.sort((a, b) => {
-          if (a.raw !== b.raw) return new Date(a.raw) - new Date(b.raw);
-          return a.time.localeCompare(b.time);
-        });
-
-        renderSelectedDates();
-      }
-    });
-
-    document.getElementById('btn-create-event').addEventListener('click', async () => {
-      const eventName = document.getElementById('event-name').value.trim();
-      if (!eventName) {
-        alert("イベント名を入力してください。");
-        return;
-      }
-      
-      if (selectedCandidateDates.length === 0) {
-        alert("候補日を1つ以上追加してください。");
-        return;
-      }
-
-      const datesData = selectedCandidateDates.map((item) => {
-        return { date: item.date, time: item.time };
-      });
-
-      const newEvent = { name: eventName, dates: datesData };
-
-      try {
-        const newId = await Api.createEvent(newEvent);
-        window.location.href = getShareUrl(newId);
-      } catch (error) {
-        showError("イベントの作成に失敗しました。Firestoreの権限（セキュリティルール）などを確認してください。", error);
-      }
+  function showOnly(id) {
+    ['view-loading', 'view-no-link', 'view-event'].forEach(viewId => {
+      document.getElementById(viewId).classList.toggle('hidden', viewId !== id);
     });
   }
 
-  function renderSelectedDates() {
-    const container = document.getElementById('selected-dates');
+  function showError(message, error) {
+    const box = document.getElementById('error-container');
+    box.textContent = `${message}${error ? ` (${error.message || error})` : ''}`;
+    box.classList.remove('hidden');
+    console.error(error);
+  }
+
+  function renderAttendanceForm() {
+    const container = document.getElementById('attendance-form-list');
     container.innerHTML = '';
-    
-    if (selectedCandidateDates.length === 0) {
-      container.innerHTML = '<p style="color:#999; font-size:0.9em; margin:0;">上のカレンダーから日付を選ぶと、ここに追加されます。</p>';
-      return;
-    }
+    if (!currentEventData?.dates?.length) return;
 
-    selectedCandidateDates.forEach((item, index) => {
-      const div = document.createElement('div');
-      div.className = 'date-item';
-      div.innerHTML = `
-        <span>${item.date}</span>
-        <input type="text" value="${item.time}" placeholder="時間" data-index="${index}" class="cand-time-input">
-        <button type="button" class="btn-remove" data-index="${index}" title="この候補を削除">&times;</button>
-      `;
-      container.appendChild(div);
+    currentEventData.dates.forEach((d, i) => {
+      const row = document.createElement('div');
+      row.className = 'attendance-row';
+      row.innerHTML = `
+        <div><strong>${escapeHtml(d.date)}</strong> <small>${escapeHtml(d.time)}</small></div>
+        <div class="attendance-options">
+          <label><input type="radio" name="attend-${i}" value="●"> ● OK</label>
+          <label><input type="radio" name="attend-${i}" value="△" checked> △ 未定</label>
+          <label><input type="radio" name="attend-${i}" value="×"> × 不可</label>
+        </div>`;
+      container.appendChild(row);
     });
-
-    document.querySelectorAll('.cand-time-input').forEach(input => {
-      input.addEventListener('change', (e) => {
-        const idx = e.target.getAttribute('data-index');
-        selectedCandidateDates[idx].time = e.target.value;
-      });
-    });
-
-    document.querySelectorAll('.btn-remove').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const idx = e.target.getAttribute('data-index');
-        selectedCandidateDates.splice(idx, 1);
-        renderSelectedDates();
-      });
-    });
-  }
-
-  async function loadEventScreen(eventId) {
-    Api.listenEvent(eventId, (eventData) => {
-      document.getElementById('view-loading').classList.add('hidden');
-
-      if (!eventData) {
-        alert("イベントが見つかりません。");
-        window.location.href = window.location.pathname;
-        return;
-      }
-      
-      currentEventData = eventData;
-      
-      if (document.getElementById('view-event').classList.contains('hidden')) {
-        showView('view-event');
-        document.getElementById('display-event-name').textContent = eventData.name;
-        
-        const shareUrl = getShareUrl(eventId);
-        const shareLinkEl = document.getElementById('share-link');
-        shareLinkEl.href = shareUrl;
-        shareLinkEl.textContent = shareUrl;
-
-        renderAttendanceForm();
-      }
-
-      const selectEl = document.getElementById('edit-user-select');
-      const prevSelected = selectEl.value;
-      selectEl.innerHTML = '<option value="">-- 名前を選択 --</option>';
-      
-      const responsesList = eventData.responses ? Object.values(eventData.responses) : [];
-      if (responsesList.length > 0) {
-        document.getElementById('edit-container').classList.remove('hidden');
-        responsesList.forEach(res => {
-          const opt = document.createElement('option');
-          opt.value = res.name;
-          opt.textContent = res.name;
-          selectEl.appendChild(opt);
-        });
-        if (prevSelected && eventData.responses[prevSelected]) {
-          selectEl.value = prevSelected;
-        }
-      } else {
-        document.getElementById('edit-container').classList.add('hidden');
-      }
-
-      renderAttendanceTable();
-
-    }, (error) => {
-      document.getElementById('view-loading').classList.add('hidden');
-      showError("データの読み込みに失敗しました。", error);
-    });
-
-    document.getElementById('btn-start-edit').onclick = () => {
-      const selectedName = document.getElementById('edit-user-select').value;
-      if (!selectedName) {
-        alert("修正したいお名前を選択してください。");
-        return;
-      }
-      
-      const resData = currentEventData.responses[selectedName];
-      if (!resData) return;
-      
-      document.getElementById('user-name').value = resData.name;
-      document.getElementById('user-name').disabled = true;
-      document.getElementById('user-name').style.backgroundColor = '#e0e0e0';
-      document.getElementById('user-comment').value = resData.comment || '';
-      
-      currentEventData.dates.forEach((d, i) => {
-        const uniqueKey = `${d.date}-${d.time}`;
-        const userMark = resData.attendances[uniqueKey] || '△';
-        const radio = document.querySelector(`input[name="attend-${i}"][value="${userMark}"]`);
-        if (radio) radio.checked = true;
-      });
-      
-      document.getElementById('form-title').textContent = `出欠を修正する（${selectedName}さん）`;
-      document.getElementById('btn-submit-response').textContent = "修正を保存する";
-      document.getElementById('btn-cancel-edit').classList.remove('hidden');
-      
-      document.getElementById('form-title').scrollIntoView({ behavior: 'smooth' });
-    };
-
-    document.getElementById('btn-cancel-edit').onclick = () => {
-      resetForm();
-    };
-
-    function resetForm() {
-      document.getElementById('user-name').value = '';
-      document.getElementById('user-name').disabled = false;
-      document.getElementById('user-name').style.backgroundColor = '';
-      document.getElementById('user-comment').value = '';
-      document.getElementById('form-title').textContent = "出欠を入力する";
-      document.getElementById('btn-submit-response').textContent = "回答を送信";
-      document.getElementById('btn-cancel-edit').classList.add('hidden');
-      
-      if (currentEventData && currentEventData.dates) {
-        currentEventData.dates.forEach((d, i) => {
-          const radio = document.querySelector(`input[name="attend-${i}"][value="△"]`);
-          if (radio) radio.checked = true;
-        });
-      }
-    }
-
-    document.getElementById('btn-submit-response').onclick = async () => {
-      const name = document.getElementById('user-name').value.trim();
-      if (!name) {
-        alert("お名前を入力してください。");
-        return;
-      }
-
-      const comment = document.getElementById('user-comment').value.trim();
-      const attendances = {};
-
-      currentEventData.dates.forEach((d, i) => {
-        const selected = document.querySelector(`input[name="attend-${i}"]:checked`);
-        const uniqueKey = `${d.date}-${d.time}`;
-        attendances[uniqueKey] = selected ? selected.value : '△';
-      });
-
-      const responseData = { name, comment, attendances };
-      const btn = document.getElementById('btn-submit-response');
-      btn.disabled = true;
-
-      try {
-        await Api.submitResponse(eventId, responseData);
-        alert("回答を保存しました！");
-        resetForm();
-      } catch (error) {
-        showError("回答の送信に失敗しました。", error);
-      } finally {
-        btn.disabled = false;
-      }
-    };
   }
 
   function renderAttendanceTable() {
     const table = document.getElementById('attendance-table');
     const event = currentEventData;
-    let html = '';
-
     const responsesList = event.responses ? Object.values(event.responses) : [];
     const hasResponses = responsesList.length > 0;
 
     const stats = event.dates.map((d, index) => {
       let countO = 0, countT = 0, countX = 0;
-      const uniqueKey = `${d.date}-${d.time}`;
-      
-      if (hasResponses) {
-        responsesList.forEach(res => {
-          const mark = res.attendances[uniqueKey];
-          if (mark === '●') countO++;
-          else if (mark === '△') countT++;
-          else if (mark === '×') countX++;
-        });
-      }
+      const key = `${d.date}-${d.time}`;
+      responsesList.forEach(res => {
+        const mark = res.attendances?.[key];
+        if (mark === '●') countO++;
+        else if (mark === '△') countT++;
+        else if (mark === '×') countX++;
+      });
       return { countO, countT, countX, index };
     });
 
-    const sortedStats = [...stats].filter(s => s.countO > 0).sort((a, b) => b.countO - a.countO);
-    let currentRank = 1;
-    let currentScore = -1;
-    let actualRank = 1;
+    const sorted = [...stats].filter(s => s.countO > 0).sort((a,b) => b.countO - a.countO);
     const rankMap = {};
-    
-    sortedStats.forEach(s => {
+    let currentScore = -1, currentRank = 1, actualRank = 1;
+    sorted.forEach(s => {
       if (s.countO !== currentScore) {
-        currentRank = actualRank;
         currentScore = s.countO;
+        currentRank = actualRank;
       }
-      if (currentRank <= 3) {
-        rankMap[s.index] = currentRank;
-      }
+      if (currentRank <= 3) rankMap[s.index] = currentRank;
       actualRank++;
     });
 
-    html += '<tr><th>日程</th><th>集計</th>';
+    let html = '<tr><th>日程</th><th>集計</th>';
     if (hasResponses) {
       responsesList.forEach(res => {
-        const commentHtml = res.comment 
-          ? `<div style="font-size: 0.8em; color: #555; font-weight: normal; margin-top: 6px; white-space: normal; min-width: 90px; text-align: left; padding: 5px; background: #fff; border-radius: 4px; border: 1px solid #ccc; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">${res.comment}</div>` 
+        const comment = res.comment
+          ? `<div style="font-size:.8em;color:#555;font-weight:normal;margin-top:6px;white-space:normal;min-width:90px;text-align:left;padding:5px;background:#fff;border-radius:4px;border:1px solid #ccc;">${escapeHtml(res.comment)}</div>`
           : '';
-        // 人数が増えても潰れないように専用クラス「user-col」を付与
-        html += `<th class="user-col" style="vertical-align: top;">${res.name}${commentHtml}</th>`;
+        html += `<th class="user-col" style="vertical-align:top;">${escapeHtml(res.name)}${comment}</th>`;
       });
     } else {
       html += '<th>回答者</th>';
@@ -655,78 +289,143 @@
     event.dates.forEach((d, index) => {
       const st = stats[index];
       const rank = rankMap[index];
-      const uniqueKey = `${d.date}-${d.time}`;
-      
-      let rowClass = '';
-      let badgeHtml = '';
-      
-      if (hasResponses && rank) {
-        if (rank === 1) {
-          rowClass = 'rank-1';
-          badgeHtml = '<span class="badge badge-1">👑 1位</span><br>';
-        } else if (rank === 2) {
-          rowClass = 'rank-2';
-          badgeHtml = '<span class="badge badge-2">🥈 2位</span><br>';
-        } else if (rank === 3) {
-          rowClass = 'rank-3';
-          badgeHtml = '<span class="badge badge-3">🥉 3位</span><br>';
-        }
-      }
+      const key = `${d.date}-${d.time}`;
+      let rowClass = '', badge = '';
+      if (rank === 1) { rowClass = 'rank-1'; badge = '<span class="badge badge-1">👑 1位</span><br>'; }
+      else if (rank === 2) { rowClass = 'rank-2'; badge = '<span class="badge badge-2">🥈 2位</span><br>'; }
+      else if (rank === 3) { rowClass = 'rank-3'; badge = '<span class="badge badge-3">🥉 3位</span><br>'; }
 
       html += `<tr class="${rowClass}">`;
-      html += `<td>${badgeHtml}${d.date}<br><small>${d.time}</small></td>`;
-      html += `<td class="stats-cell">
-        <span class="mark-circle">●</span>${st.countO} 
-        <span class="mark-triangle">△</span>${st.countT} 
-        <span class="mark-cross">×</span>${st.countX}
-      </td>`;
+      html += `<td>${badge}${escapeHtml(d.date)}<br><small>${escapeHtml(d.time)}</small></td>`;
+      html += `<td class="stats-cell"><span class="mark-circle">●</span>${st.countO} <span class="mark-triangle">△</span>${st.countT} <span class="mark-cross">×</span>${st.countX}</td>`;
 
       if (hasResponses) {
         responsesList.forEach(res => {
-          const mark = res.attendances[uniqueKey] || '-';
-          let cssClass = '';
-          if (mark === '●') cssClass = 'mark-circle';
-          else if (mark === '△') cssClass = 'mark-triangle';
-          else if (mark === '×') cssClass = 'mark-cross';
-          
-          html += `<td class="${cssClass}">${mark}</td>`;
+          const mark = res.attendances?.[key] || '-';
+          const css = mark === '●' ? 'mark-circle' : mark === '△' ? 'mark-triangle' : mark === '×' ? 'mark-cross' : '';
+          html += `<td class="${css}">${escapeHtml(mark)}</td>`;
         });
       } else {
-        html += `<td style="color: #999; font-size: 0.9em;">まだ回答がありません</td>`;
+        html += '<td style="color:#999;font-size:.9em;">まだ回答がありません</td>';
       }
-
       html += '</tr>';
     });
 
     table.innerHTML = html;
   }
 
-  function renderAttendanceForm() {
-    const container = document.getElementById('attendance-form-list');
-    container.innerHTML = '';
-    const event = currentEventData;
+  function rebuildEditSelect() {
+    const select = document.getElementById('edit-user-select');
+    const previous = select.value;
+    select.innerHTML = '<option value="">-- 名前を選択 --</option>';
+    const responses = currentEventData?.responses ? Object.values(currentEventData.responses) : [];
+    document.getElementById('edit-container').classList.toggle('hidden', responses.length === 0);
+    responses.forEach(res => {
+      const option = document.createElement('option');
+      option.value = res.name;
+      option.textContent = res.name;
+      select.appendChild(option);
+    });
+    if (previous && currentEventData.responses?.[previous]) select.value = previous;
+  }
 
-    if (!event.dates || event.dates.length === 0) return;
-
-    event.dates.forEach((d, i) => {
-      const div = document.createElement('div');
-      div.className = 'attendance-row';
-      div.innerHTML = `
-        <div><strong>${d.date}</strong> <small>${d.time}</small></div>
-        <div class="attendance-options">
-          <label><input type="radio" name="attend-${i}" value="●"> ● OK</label>
-          <label><input type="radio" name="attend-${i}" value="△" checked> △ 未定</label>
-          <label><input type="radio" name="attend-${i}" value="×"> × 不可</label>
-        </div>
-      `;
-      container.appendChild(div);
+  function resetForm() {
+    const name = document.getElementById('user-name');
+    name.value = '';
+    name.disabled = false;
+    name.style.backgroundColor = '';
+    document.getElementById('user-comment').value = '';
+    document.getElementById('form-title').textContent = '出欠を入力する';
+    document.getElementById('btn-submit-response').textContent = '回答を送信';
+    document.getElementById('btn-cancel-edit').classList.add('hidden');
+    currentEventData?.dates?.forEach((d, i) => {
+      const radio = document.querySelector(`input[name="attend-${i}"][value="△"]`);
+      if (radio) radio.checked = true;
     });
   }
 
-  // 実行開始
-  initApp();
+  function setupActions() {
+    document.getElementById('btn-start-edit').onclick = () => {
+      const selectedName = document.getElementById('edit-user-select').value;
+      if (!selectedName) return alert('修正したいお名前を選択してください。');
+      const res = currentEventData.responses?.[selectedName];
+      if (!res) return;
 
+      const name = document.getElementById('user-name');
+      name.value = res.name;
+      name.disabled = true;
+      name.style.backgroundColor = '#e0e0e0';
+      document.getElementById('user-comment').value = res.comment || '';
+      currentEventData.dates.forEach((d, i) => {
+        const key = `${d.date}-${d.time}`;
+        const mark = res.attendances?.[key] || '△';
+        const radio = document.querySelector(`input[name="attend-${i}"][value="${mark}"]`);
+        if (radio) radio.checked = true;
+      });
+      document.getElementById('form-title').textContent = `出欠を修正する（${selectedName}さん）`;
+      document.getElementById('btn-submit-response').textContent = '修正を保存する';
+      document.getElementById('btn-cancel-edit').classList.remove('hidden');
+      document.getElementById('form-title').scrollIntoView({ behavior: 'smooth' });
+    };
+
+    document.getElementById('btn-cancel-edit').onclick = resetForm;
+
+    document.getElementById('btn-submit-response').onclick = async () => {
+      const name = document.getElementById('user-name').value.trim();
+      if (!name) return alert('お名前を入力してください。');
+
+      const attendances = {};
+      currentEventData.dates.forEach((d, i) => {
+        const selected = document.querySelector(`input[name="attend-${i}"]:checked`);
+        attendances[`${d.date}-${d.time}`] = selected ? selected.value : '△';
+      });
+
+      const btn = document.getElementById('btn-submit-response');
+      btn.disabled = true;
+      try {
+        await setDoc(doc(db, 'events', currentEventId), {
+          responses: {
+            [name]: {
+              name,
+              comment: document.getElementById('user-comment').value.trim(),
+              attendances
+            }
+          }
+        }, { merge: true });
+        alert('回答を保存しました！');
+        resetForm();
+      } catch (error) {
+        showError('回答の送信に失敗しました。', error);
+      } finally {
+        btn.disabled = false;
+      }
+    };
+  }
+
+  const params = new URLSearchParams(location.search);
+  currentEventId = params.get('id');
+
+  if (!currentEventId) {
+    showOnly('view-no-link');
+  } else {
+    setupActions();
+    onSnapshot(doc(db, 'events', currentEventId), snapshot => {
+      if (!snapshot.exists()) {
+        showOnly('view-no-link');
+        document.querySelector('#view-no-link p').textContent = 'イベントが見つかりません。共有リンクをご確認ください。';
+        return;
+      }
+      currentEventData = snapshot.data();
+      showOnly('view-event');
+      document.getElementById('display-event-name').textContent = currentEventData.name || 'イベント';
+      renderAttendanceForm();
+      rebuildEditSelect();
+      renderAttendanceTable();
+    }, error => {
+      showOnly('view-event');
+      showError('データの読み込みに失敗しました。', error);
+    });
+  }
 </script>
-
 </body>
 </html>
