@@ -61,11 +61,12 @@
       cursor:pointer;
     }
     button:hover { background:var(--primary-dark); }
-    button:disabled { opacity:.55; cursor:default; }
+    button:disabled { opacity:.5; cursor:default; }
     .btn-secondary { background:#607d8b; }
     .btn-secondary:hover { background:#455a64; }
     .btn-danger { background:var(--danger); }
     .btn-danger:hover { background:#8e0000; }
+    .btn-muted { background:#9e9e9e; }
     .btn-small { padding:8px 12px; font-size:14px; }
     .tab-button.active { background:#0d47a1; }
     .hidden { display:none !important; }
@@ -114,6 +115,25 @@
     }
     .event-card h3 { margin:0 0 6px; color:var(--primary); }
     .meta { color:var(--muted); font-size:.9rem; }
+    .owner-badge {
+      display:inline-block;
+      margin-top:6px;
+      padding:2px 7px;
+      border-radius:999px;
+      background:#e8f5e9;
+      color:#2e7d32;
+      font-size:.78rem;
+      font-weight:bold;
+    }
+    .legacy-badge {
+      display:inline-block;
+      margin-top:6px;
+      padding:2px 7px;
+      border-radius:999px;
+      background:#f5f5f5;
+      color:#666;
+      font-size:.78rem;
+    }
     .actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; }
     .empty {
       text-align:center;
@@ -198,7 +218,7 @@
 
     <div class="import-box">
       <h2 style="font-size:1.2rem;">既存イベントをこの一覧に追加</h2>
-      <p style="margin-top:0;color:#666;">以前作成したイベントの共有URL、または8文字のイベントIDを入力してください。</p>
+      <p style="margin-top:0;color:#666;">以前作成したイベントの共有URL、または8文字のイベントIDを入力できます。旧イベントは開く・QR表示はできますが、このブラウザの管理トークンがないため削除はできません。</p>
       <div class="import-row">
         <input id="import-value" type="text" placeholder="共有URL または イベントID">
         <button id="btn-import" class="btn-secondary">追加</button>
@@ -256,6 +276,7 @@
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
   const STORAGE_KEY = 'syukketsu_admin_event_ids_v1';
+  const TOKEN_KEY = 'syukketsu_admin_tokens_v1';
   let selectedCandidateDates = [];
 
   function escapeHtml(value) {
@@ -288,6 +309,53 @@
 
   function saveStoredIds(ids) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify([...new Set(ids.filter(Boolean))]));
+  }
+
+  function getTokenMap() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(TOKEN_KEY) || '{}');
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function saveTokenMap(map) {
+    localStorage.setItem(TOKEN_KEY, JSON.stringify(map));
+  }
+
+  function setAdminToken(id, token) {
+    const map = getTokenMap();
+    map[id] = token;
+    saveTokenMap(map);
+  }
+
+  function getAdminToken(id) {
+    return getTokenMap()[id] || null;
+  }
+
+  function removeAdminToken(id) {
+    const map = getTokenMap();
+    delete map[id];
+    saveTokenMap(map);
+  }
+
+  function createAdminToken() {
+    const bytes = new Uint8Array(24);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  async function hashToken(token) {
+    const bytes = new TextEncoder().encode(token);
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    return Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  async function isOwnedEvent(event) {
+    const token = getAdminToken(event.id);
+    if (!token || !event.ownerTokenHash) return false;
+    return (await hashToken(token)) === event.ownerTokenHash;
   }
 
   function rememberEvent(id) {
@@ -339,8 +407,13 @@
     for (const id of ids) {
       try {
         const snap = await getDoc(doc(db, 'events', id));
-        if (snap.exists()) events.push({ id, ...snap.data() });
-        else missingIds.push(id);
+        if (snap.exists()) {
+          const event = { id, ...snap.data() };
+          event._owned = await isOwnedEvent(event);
+          events.push(event);
+        } else {
+          missingIds.push(id);
+        }
       } catch (error) {
         console.error(error);
       }
@@ -358,6 +431,13 @@
     events.forEach(event => {
       const responses = event.responses ? Object.keys(event.responses).length : 0;
       const dateCount = Array.isArray(event.dates) ? event.dates.length : 0;
+      const ownership = event._owned
+        ? '<span class="owner-badge">このブラウザで管理</span>'
+        : '<span class="legacy-badge">閲覧登録のみ</span>';
+      const deleteControl = event._owned
+        ? `<button class="btn-delete btn-danger btn-small" data-id="${escapeHtml(event.id)}" data-name="${escapeHtml(event.name || '名称未設定')}">削除</button>`
+        : `<button class="btn-forget btn-muted btn-small" data-id="${escapeHtml(event.id)}">一覧から外す</button>`;
+
       const card = document.createElement('div');
       card.className = 'event-card';
       card.innerHTML = `
@@ -365,11 +445,12 @@
           <div>
             <h3>${escapeHtml(event.name || '名称未設定')}</h3>
             <div class="meta">候補 ${dateCount}件 ・ 回答者 ${responses}人 ・ ${escapeHtml(formatCreatedAt(event.createdAt))}</div>
+            ${ownership}
           </div>
           <div class="actions">
             <button class="btn-open btn-small" data-id="${escapeHtml(event.id)}">開く</button>
             <button class="btn-qr btn-secondary btn-small" data-id="${escapeHtml(event.id)}">QR</button>
-            <button class="btn-delete btn-danger btn-small" data-id="${escapeHtml(event.id)}" data-name="${escapeHtml(event.name || '名称未設定')}">削除</button>
+            ${deleteControl}
           </div>
         </div>`;
       list.appendChild(card);
@@ -383,14 +464,36 @@
       btn.onclick = () => showQr(getShareUrl(btn.dataset.id));
     });
 
+    list.querySelectorAll('.btn-forget').forEach(btn => {
+      btn.onclick = async () => {
+        forgetEvent(btn.dataset.id);
+        removeAdminToken(btn.dataset.id);
+        await loadEventList();
+      };
+    });
+
     list.querySelectorAll('.btn-delete').forEach(btn => {
       btn.onclick = async () => {
+        const id = btn.dataset.id;
+        const snap = await getDoc(doc(db, 'events', id));
+        if (!snap.exists()) {
+          forgetEvent(id);
+          removeAdminToken(id);
+          return loadEventList();
+        }
+        const event = { id, ...snap.data() };
+        if (!(await isOwnedEvent(event))) {
+          alert('このブラウザには、このイベントを削除する管理トークンがありません。');
+          return;
+        }
+
         const ok = confirm(`「${btn.dataset.name}」を削除しますか？\n\n回答データも含めて削除され、元に戻せません。`);
         if (!ok) return;
         btn.disabled = true;
         try {
-          await deleteDoc(doc(db, 'events', btn.dataset.id));
-          forgetEvent(btn.dataset.id);
+          await deleteDoc(doc(db, 'events', id));
+          forgetEvent(id);
+          removeAdminToken(id);
           await loadEventList();
         } catch (error) {
           console.error(error);
@@ -471,18 +574,22 @@
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     for (let i=0;i<8;i++) id += chars.charAt(Math.floor(Math.random()*chars.length));
 
+    const adminToken = createAdminToken();
+    const ownerTokenHash = await hashToken(adminToken);
     const eventData = {
       id,
       name,
       dates:selectedCandidateDates.map(x => ({ date:x.date, time:x.time })),
       responses:{},
-      createdAt:Date.now()
+      createdAt:Date.now(),
+      ownerTokenHash
     };
 
     const btn = document.getElementById('btn-create-event');
     btn.disabled = true;
     try {
       await setDoc(doc(db,'events',id),eventData);
+      setAdminToken(id, adminToken);
       rememberEvent(id);
       document.getElementById('event-name').value = '';
       document.getElementById('default-time').value = '';
