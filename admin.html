@@ -9,655 +9,104 @@
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ja.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
-    :root {
-      --primary:#1976d2;
-      --primary-dark:#115293;
-      --bg:#f5f7fa;
-      --text:#333;
-      --muted:#666;
-      --border:#d0d7de;
-      --danger:#c62828;
-    }
-    * { box-sizing:border-box; }
-    body {
-      font-family:"Helvetica Neue",Arial,"Hiragino Kaku Gothic ProN","Hiragino Sans",Meiryo,sans-serif;
-      background:var(--bg);
-      color:var(--text);
-      margin:0;
-      padding:20px;
-      line-height:1.6;
-    }
-    .container {
-      max-width:900px;
-      margin:0 auto;
-      background:#fff;
-      border-radius:10px;
-      padding:28px;
-      box-shadow:0 4px 10px rgba(0,0,0,.08);
-    }
-    h1,h2 { color:var(--primary); }
-    h1 { margin-top:0; }
-    .notice {
-      background:#e3f2fd;
-      border:1px solid #bbdefb;
-      border-radius:8px;
-      padding:14px 16px;
-      margin-bottom:24px;
-      color:#37474f;
-    }
-    .tabs {
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      margin-bottom:22px;
-    }
-    button {
-      border:0;
-      border-radius:5px;
-      padding:10px 16px;
-      background:var(--primary);
-      color:#fff;
-      font-size:15px;
-      cursor:pointer;
-    }
-    button:hover { background:var(--primary-dark); }
-    button:disabled { opacity:.5; cursor:default; }
-    .btn-secondary { background:#607d8b; }
-    .btn-secondary:hover { background:#455a64; }
-    .btn-danger { background:var(--danger); }
-    .btn-danger:hover { background:#8e0000; }
-    .btn-muted { background:#9e9e9e; }
-    .btn-small { padding:8px 12px; font-size:14px; }
-    .tab-button.active { background:#0d47a1; }
-    .hidden { display:none !important; }
-    .form-group { margin-bottom:18px; }
-    label { display:block; font-weight:bold; margin-bottom:5px; }
-    input[type="text"] {
-      width:100%;
-      border:1px solid var(--border);
-      border-radius:5px;
-      padding:10px;
-      font-size:16px;
-    }
-    small { color:var(--muted); }
-    .date-list { margin-top:10px; }
-    .date-item {
-      display:flex;
-      align-items:center;
-      gap:10px;
-      border:1px solid #e5e7eb;
-      background:#fafafa;
-      padding:10px 12px;
-      border-radius:6px;
-      margin-bottom:8px;
-    }
-    .date-item span { flex:1; font-weight:bold; }
-    .date-item input { width:120px; }
-    .btn-remove {
-      background:transparent;
-      color:var(--danger);
-      font-size:22px;
-      padding:0 6px;
-    }
-    .btn-remove:hover { background:#ffebee; }
-    .event-list { display:grid; gap:12px; margin-top:18px; }
-    .event-card {
-      border:1px solid var(--border);
-      border-radius:8px;
-      padding:15px;
-      background:#fff;
-    }
-    .event-card-main {
-      display:flex;
-      justify-content:space-between;
-      align-items:flex-start;
-      gap:16px;
-    }
-    .event-card h3 { margin:0 0 6px; color:var(--primary); }
-    .meta { color:var(--muted); font-size:.9rem; }
-    .owner-badge {
-      display:inline-block;
-      margin-top:6px;
-      padding:2px 7px;
-      border-radius:999px;
-      background:#e8f5e9;
-      color:#2e7d32;
-      font-size:.78rem;
-      font-weight:bold;
-    }
-    .legacy-badge {
-      display:inline-block;
-      margin-top:6px;
-      padding:2px 7px;
-      border-radius:999px;
-      background:#f5f5f5;
-      color:#666;
-      font-size:.78rem;
-    }
-    .actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; }
-    .empty {
-      text-align:center;
-      color:#777;
-      padding:34px 16px;
-      border:1px dashed #aaa;
-      border-radius:8px;
-    }
-    .import-box {
-      margin-top:24px;
-      padding-top:20px;
-      border-top:1px solid #eee;
-    }
-    .import-row { display:flex; gap:8px; }
-    .import-row input { flex:1; }
-    .error {
-      background:#ffebee;
-      color:#c62828;
-      padding:12px 14px;
-      border-radius:6px;
-      margin-top:12px;
-    }
-    .modal-backdrop {
-      position:fixed;
-      inset:0;
-      background:rgba(0,0,0,.55);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:20px;
-      z-index:1000;
-    }
-    .modal-card {
-      width:min(92vw,380px);
-      background:#fff;
-      border-radius:12px;
-      padding:24px;
-      text-align:center;
-      position:relative;
-    }
-    .modal-close {
-      position:absolute;
-      right:10px;
-      top:8px;
-      background:transparent;
-      color:#555;
-      padding:4px 10px;
-      font-size:26px;
-    }
-    #qr-code { display:flex; justify-content:center; margin:18px 0; }
-    #qr-url { font-size:.78rem; color:#666; word-break:break-all; }
-    @media (max-width:640px) {
-      body { padding:10px; }
-      .container { padding:18px; }
-      h1 { font-size:1.55rem; }
-      h2 { font-size:1.25rem; }
-      .event-card-main { flex-direction:column; }
-      .actions { width:100%; justify-content:stretch; }
-      .actions button { flex:1; }
-      .date-item { flex-wrap:wrap; }
-      .date-item input { width:105px; }
-      .import-row { flex-direction:column; }
-    }
+    :root{--primary:#1976d2;--primary-dark:#115293;--bg:#f5f7fa;--text:#333;--muted:#666;--border:#d0d7de;--danger:#c62828}
+    *{box-sizing:border-box} body{font-family:"Helvetica Neue",Arial,"Hiragino Kaku Gothic ProN","Hiragino Sans",Meiryo,sans-serif;background:var(--bg);color:var(--text);margin:0;padding:20px;line-height:1.6}
+    .container{max-width:900px;margin:0 auto;background:#fff;border-radius:10px;padding:28px;box-shadow:0 4px 10px rgba(0,0,0,.08)}
+    h1,h2{color:var(--primary)} h1{margin-top:0}.hidden{display:none!important}
+    button{border:0;border-radius:6px;padding:10px 16px;background:var(--primary);color:#fff;font-size:15px;cursor:pointer}button:hover{background:var(--primary-dark)}button:disabled{opacity:.5;cursor:default}
+    .btn-secondary{background:#607d8b}.btn-danger{background:var(--danger)}.btn-small{padding:8px 12px;font-size:14px}
+    .login-card{text-align:center;padding:36px 16px}.login-card p{color:var(--muted)}.google-btn{font-size:16px;padding:12px 20px}
+    .auth-bar{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 12px;background:#f7f9fb;border:1px solid var(--border);border-radius:8px;margin-bottom:20px;flex-wrap:wrap}.auth-user{font-size:.9rem;color:#555;word-break:break-all}
+    .notice{background:#e3f2fd;border:1px solid #bbdefb;border-radius:8px;padding:12px 14px;margin-bottom:20px;color:#37474f}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}.tab.active{background:#0d47a1}
+    .form-group{margin-bottom:18px}label{display:block;font-weight:bold;margin-bottom:5px}input[type="text"]{width:100%;border:1px solid var(--border);border-radius:5px;padding:10px;font-size:16px}small{color:var(--muted)}
+    .date-list{margin-top:10px}.date-item{display:flex;align-items:center;gap:10px;border:1px solid #e5e7eb;background:#fafafa;padding:10px 12px;border-radius:6px;margin-bottom:8px}.date-item span{flex:1;font-weight:bold}.date-item input{width:120px}.btn-remove{background:transparent;color:var(--danger);font-size:22px;padding:0 6px}
+    .event-list{display:grid;gap:12px;margin-top:18px}.event-card{border:1px solid var(--border);border-radius:8px;padding:15px}.event-main{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}.event-card h3{margin:0 0 6px;color:var(--primary)}.meta{color:var(--muted);font-size:.9rem}.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.empty{text-align:center;color:#777;padding:32px 16px;border:1px dashed #aaa;border-radius:8px}
+    .import-box{margin-top:24px;padding-top:20px;border-top:1px solid #eee}.import-row{display:flex;gap:8px}.import-row input{flex:1}.error{background:#ffebee;color:#c62828;padding:12px 14px;border-radius:6px;margin-top:12px}
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:20px;z-index:1000}.modal-card{width:min(92vw,380px);background:#fff;border-radius:12px;padding:24px;text-align:center;position:relative}.modal-close{position:absolute;right:10px;top:8px;background:transparent;color:#555;padding:4px 10px;font-size:26px}#qr-code{display:flex;justify-content:center;margin:18px 0}#qr-url{font-size:.78rem;color:#666;word-break:break-all}
+    @media(max-width:640px){body{padding:10px}.container{padding:18px}h1{font-size:1.55rem}h2{font-size:1.25rem}.event-main{flex-direction:column}.actions{width:100%;justify-content:stretch}.actions button{flex:1}.date-item{flex-wrap:wrap}.date-item input{width:105px}.import-row{flex-direction:column}}
   </style>
 </head>
 <body>
 <div class="container">
-  <h1>主催者用イベント管理</h1>
-  <div class="notice">
-    この画面は主催者用です。イベント一覧はFirestore全体から取得せず、<strong>このブラウザで作成・登録したイベントだけ</strong>を表示します。参加者に共有するのは各イベントの共有リンクだけです。
-  </div>
+  <section id="login-view" class="login-card">
+    <h1>主催者用イベント管理</h1>
+    <p>管理画面を利用するには、主催者のGoogleアカウントでログインしてください。</p>
+    <button id="btn-google-login" class="google-btn">Googleでログイン</button>
+    <div id="login-error" class="error hidden"></div>
+  </section>
 
-  <div class="tabs">
-    <button id="tab-list" class="tab-button active">イベント一覧</button>
-    <button id="tab-create" class="tab-button">＋ 新しいイベント</button>
-  </div>
+  <section id="admin-view" class="hidden">
+    <h1>主催者用イベント管理</h1>
+    <div class="auth-bar">
+      <div>ログイン中：<span id="user-email" class="auth-user"></span></div>
+      <button id="btn-logout" class="btn-secondary btn-small">ログアウト</button>
+    </div>
+    <div class="notice">イベント一覧は、現在ログインしているGoogleアカウントが主催者として登録されたイベントだけを表示します。参加者には各イベントの共有リンクだけを送ります。</div>
+    <div class="tabs">
+      <button id="tab-list" class="tab active">イベント一覧</button>
+      <button id="tab-create" class="tab">＋ 新しいイベント</button>
+    </div>
 
-  <section id="panel-list">
-    <h2>イベント一覧</h2>
-    <div id="event-list-status">読み込み中...</div>
-    <div id="event-list" class="event-list"></div>
-
-    <div class="import-box">
-      <h2 style="font-size:1.2rem;">既存イベントをこの一覧に追加</h2>
-      <p style="margin-top:0;color:#666;">以前作成したイベントの共有URL、または8文字のイベントIDを入力できます。旧イベントは開く・QR表示はできますが、このブラウザの管理トークンがないため削除はできません。</p>
-      <div class="import-row">
-        <input id="import-value" type="text" placeholder="共有URL または イベントID">
-        <button id="btn-import" class="btn-secondary">追加</button>
+    <section id="panel-list">
+      <h2>イベント一覧</h2>
+      <div id="event-list-status">読み込み中...</div>
+      <div id="event-list" class="event-list"></div>
+      <div class="import-box">
+        <h2 style="font-size:1.15rem">以前作成したイベントを管理対象に追加</h2>
+        <p style="color:#666">共有URLまたは8文字のイベントIDを入力します。まだ主催者情報が付いていない旧イベントだけ、現在のGoogleアカウントに登録できます。</p>
+        <div class="import-row"><input id="import-value" type="text" placeholder="共有URL または イベントID"><button id="btn-import" class="btn-secondary">追加</button></div>
+        <div id="import-error" class="error hidden"></div>
       </div>
-      <div id="import-error" class="error hidden"></div>
-    </div>
-  </section>
+    </section>
 
-  <section id="panel-create" class="hidden">
-    <h2>新しいイベント</h2>
-    <div class="form-group">
-      <label for="event-name">イベント名</label>
-      <input id="event-name" type="text" placeholder="例：部署の飲み会">
-    </div>
-    <div class="form-group">
-      <label for="default-time">基本の時間</label>
-      <input id="default-time" type="text" placeholder="例：19:00 & 21:00">
-      <small>「19:00 & 21:00」のように入力すると、同じ日に複数時間を追加できます。</small>
-    </div>
-    <div class="form-group">
-      <label for="calendar">カレンダーから候補日を追加</label>
-      <input id="calendar" type="text" placeholder="ここをタップして日付を追加">
-    </div>
-    <div class="form-group">
-      <label>選択された候補日</label>
-      <div id="selected-dates" class="date-list"></div>
-    </div>
-    <button id="btn-create-event">出欠表を作成</button>
-    <div id="create-error" class="error hidden"></div>
+    <section id="panel-create" class="hidden">
+      <h2>新しいイベント</h2>
+      <div class="form-group"><label for="event-name">イベント名</label><input id="event-name" type="text" placeholder="例：部署の飲み会"></div>
+      <div class="form-group"><label for="default-time">基本の時間</label><input id="default-time" type="text" placeholder="例：19:00 & 21:00"><small>「19:00 & 21:00」のように入力すると同じ日に複数時間を追加できます。</small></div>
+      <div class="form-group"><label for="calendar">カレンダーから候補日を追加</label><input id="calendar" type="text" placeholder="ここをタップして日付を追加"></div>
+      <div class="form-group"><label>選択された候補日</label><div id="selected-dates" class="date-list"></div></div>
+      <button id="btn-create-event">出欠表を作成</button>
+      <div id="create-error" class="error hidden"></div>
+    </section>
   </section>
 </div>
 
-<div id="qr-modal" class="modal-backdrop hidden">
-  <div class="modal-card">
-    <button id="btn-close-qr" class="modal-close" aria-label="閉じる">&times;</button>
-    <h2 style="margin-top:0;">共有用QRコード</h2>
-    <div id="qr-code"></div>
-    <div id="qr-url"></div>
-  </div>
-</div>
+<div id="qr-modal" class="modal hidden"><div class="modal-card"><button id="btn-close-qr" class="modal-close" aria-label="閉じる">&times;</button><h2 style="margin-top:0">共有用QRコード</h2><div id="qr-code"></div><div id="qr-url"></div></div></div>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getFirestore, doc, setDoc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import { getFirestore, collection, query, where, getDocs, doc, setDoc, getDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyAZNUBnvO0t4ExD99dHUQYkJUx1rIKO3hk",
-    authDomain: "scheduleadjustment-41555.firebaseapp.com",
-    projectId: "scheduleadjustment-41555",
-    storageBucket: "scheduleadjustment-41555.firebasestorage.app",
-    messagingSenderId: "989847585888",
-    appId: "1:989847585888:web:6c1d3cc5923facc4dcef05"
-  };
+  const firebaseConfig={apiKey:"AIzaSyAZNUBnvO0t4ExD99dHUQYkJUx1rIKO3hk",authDomain:"scheduleadjustment-41555.firebaseapp.com",projectId:"scheduleadjustment-41555",storageBucket:"scheduleadjustment-41555.firebasestorage.app",messagingSenderId:"989847585888",appId:"1:989847585888:web:6c1d3cc5923facc4dcef05"};
+  const app=initializeApp(firebaseConfig); const db=getFirestore(app); const auth=getAuth(app); const provider=new GoogleAuthProvider();
+  let currentUser=null; let selectedCandidateDates=[];
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const STORAGE_KEY = 'syukketsu_admin_event_ids_v1';
-  const TOKEN_KEY = 'syukketsu_admin_tokens_v1';
-  let selectedCandidateDates = [];
+  function esc(v){return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;')}
+  function getIndexUrl(){return `${location.origin}${location.pathname.replace(/admin\.html$/i,'index.html')}`}
+  function shareUrl(id){return `${getIndexUrl()}?id=${id}#%28%5Eo%5E%29%E2%98%86%E5%BD%A1`}
+  function randomId(){const c='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';let id='';for(let i=0;i<8;i++)id+=c[Math.floor(Math.random()*c.length)];return id}
+  function setTab(name){const list=name==='list';document.getElementById('panel-list').classList.toggle('hidden',!list);document.getElementById('panel-create').classList.toggle('hidden',list);document.getElementById('tab-list').classList.toggle('active',list);document.getElementById('tab-create').classList.toggle('active',!list);if(list)loadEventList()}
+  document.getElementById('tab-list').onclick=()=>setTab('list'); document.getElementById('tab-create').onclick=()=>setTab('create');
 
-  function escapeHtml(value) {
-    return String(value ?? '')
-      .replace(/&/g,'&amp;')
-      .replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;')
-      .replace(/"/g,'&quot;')
-      .replace(/'/g,'&#039;');
-  }
+  async function login(){const box=document.getElementById('login-error');box.classList.add('hidden');try{await setPersistence(auth,browserLocalPersistence);await signInWithPopup(auth,provider)}catch(e){console.error(e);box.textContent=`Googleログインに失敗しました。${e.code||''}`;box.classList.remove('hidden')}}
+  document.getElementById('btn-google-login').onclick=login; document.getElementById('btn-logout').onclick=()=>signOut(auth);
 
-  function getIndexUrl() {
-    const path = location.pathname.replace(/admin\.html$/i, 'index.html');
-    return `${location.origin}${path}`;
-  }
+  onAuthStateChanged(auth,user=>{currentUser=user||null;document.getElementById('login-view').classList.toggle('hidden',!!user);document.getElementById('admin-view').classList.toggle('hidden',!user);if(user){document.getElementById('user-email').textContent=user.email||user.uid;loadEventList()}});
 
-  function getShareUrl(eventId) {
-    const suffix = '%28%5Eo%5E%29%E2%98%86%E5%BD%A1';
-    return `${getIndexUrl()}?id=${eventId}#${suffix}`;
-  }
+  async function loadEventList(){if(!currentUser)return;const status=document.getElementById('event-list-status'),list=document.getElementById('event-list');status.classList.remove('hidden');status.textContent='イベントを読み込み中...';list.innerHTML='';try{const q=query(collection(db,'events'),where('ownerUid','==',currentUser.uid));const snap=await getDocs(q);const events=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(Number(b.createdAt)||0)-(Number(a.createdAt)||0));status.classList.add('hidden');if(!events.length){list.innerHTML='<div class="empty">このGoogleアカウントのイベントはまだありません。</div>';return}events.forEach(ev=>{const card=document.createElement('div');const responses=ev.responses?Object.keys(ev.responses).length:0;const dates=Array.isArray(ev.dates)?ev.dates.length:0;const created=ev.createdAt?new Date(Number(ev.createdAt)).toLocaleString('ja-JP'):'作成日時不明';card.className='event-card';card.innerHTML=`<div class="event-main"><div><h3>${esc(ev.name||'名称未設定')}</h3><div class="meta">候補 ${dates}件 ・ 回答者 ${responses}人 ・ ${esc(created)}</div></div><div class="actions"><button class="open btn-small" data-id="${esc(ev.id)}">開く</button><button class="qr btn-secondary btn-small" data-id="${esc(ev.id)}">QR</button><button class="del btn-danger btn-small" data-id="${esc(ev.id)}" data-name="${esc(ev.name||'名称未設定')}">削除</button></div></div>`;list.appendChild(card)});list.querySelectorAll('.open').forEach(b=>b.onclick=()=>window.open(shareUrl(b.dataset.id),'_blank','noopener'));list.querySelectorAll('.qr').forEach(b=>b.onclick=()=>showQr(shareUrl(b.dataset.id)));list.querySelectorAll('.del').forEach(b=>b.onclick=async()=>{if(!confirm(`「${b.dataset.name}」を削除しますか？\n\n回答も含めて削除され、元に戻せません。`))return;b.disabled=true;try{await deleteDoc(doc(db,'events',b.dataset.id));await loadEventList()}catch(e){console.error(e);alert('削除できませんでした。Firestoreルールをご確認ください。');b.disabled=false}})}catch(e){console.error(e);status.textContent='イベント一覧を読み込めませんでした。Firestoreルール設定前の場合は、現在のルールをご確認ください。'}}
 
-  function getStoredIds() {
-    try {
-      const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-      return Array.isArray(parsed) ? [...new Set(parsed.filter(Boolean))] : [];
-    } catch {
-      return [];
-    }
-  }
+  flatpickr('#calendar',{locale:'ja',mode:'multiple',dateFormat:'Y-m-d',closeOnSelect:false,onChange(ds,str,inst){if(!ds.length)return;const times=document.getElementById('default-time').value.trim().split(/[,&、]+/).map(v=>v.trim()).filter(Boolean);if(!times.length)times.push('');ds.forEach(d=>{const date=inst.formatDate(d,'Y-m-d (D)'),raw=inst.formatDate(d,'Y-m-d');times.forEach(time=>{if(!selectedCandidateDates.some(x=>x.date===date&&x.time===time))selectedCandidateDates.push({date,time,raw})})});selectedCandidateDates.sort((a,b)=>a.raw===b.raw?a.time.localeCompare(b.time):new Date(a.raw)-new Date(b.raw));const m=inst.currentMonth,y=inst.currentYear;inst.clear();inst.jumpToDate(new Date(y,m,1));renderDates()}});
+  function renderDates(){const c=document.getElementById('selected-dates');c.innerHTML='';if(!selectedCandidateDates.length){c.innerHTML='<p style="color:#999;font-size:.9em;margin:0">カレンダーから日付を選ぶと、ここに追加されます。</p>';return}selectedCandidateDates.forEach((x,i)=>{const r=document.createElement('div');r.className='date-item';r.innerHTML=`<span>${esc(x.date)}</span><input class="time" data-i="${i}" type="text" value="${esc(x.time)}" placeholder="時間"><button class="btn-remove" data-i="${i}" type="button">&times;</button>`;c.appendChild(r)});c.querySelectorAll('.time').forEach(x=>x.onchange=()=>selectedCandidateDates[Number(x.dataset.i)].time=x.value);c.querySelectorAll('.btn-remove').forEach(x=>x.onclick=()=>{selectedCandidateDates.splice(Number(x.dataset.i),1);renderDates()})} renderDates();
 
-  function saveStoredIds(ids) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...new Set(ids.filter(Boolean))]));
-  }
+  document.getElementById('btn-create-event').onclick=async()=>{if(!currentUser)return;const name=document.getElementById('event-name').value.trim();if(!name)return alert('イベント名を入力してください。');if(!selectedCandidateDates.length)return alert('候補日を1つ以上追加してください。');const id=randomId(),btn=document.getElementById('btn-create-event'),box=document.getElementById('create-error');box.classList.add('hidden');btn.disabled=true;try{await setDoc(doc(db,'events',id),{id,name,dates:selectedCandidateDates.map(x=>({date:x.date,time:x.time})),responses:{},createdAt:Date.now(),ownerUid:currentUser.uid,ownerEmail:currentUser.email||''});document.getElementById('event-name').value='';document.getElementById('default-time').value='';selectedCandidateDates=[];renderDates();showQr(shareUrl(id));setTab('list')}catch(e){console.error(e);box.textContent='イベントの作成に失敗しました。Firestoreルールをご確認ください。';box.classList.remove('hidden')}finally{btn.disabled=false}};
 
-  function getTokenMap() {
-    try {
-      const parsed = JSON.parse(localStorage.getItem(TOKEN_KEY) || '{}');
-      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
-    } catch {
-      return {};
-    }
-  }
+  function parseId(v){const t=v.trim();if(/^[A-Za-z0-9]{8}$/.test(t))return t;try{const u=new URL(t),id=u.searchParams.get('id');return /^[A-Za-z0-9]{8}$/.test(id||'')?id:null}catch{return null}}
+  document.getElementById('btn-import').onclick=async()=>{if(!currentUser)return;const box=document.getElementById('import-error'),id=parseId(document.getElementById('import-value').value);box.classList.add('hidden');if(!id){box.textContent='共有URLまたは8文字のイベントIDを入力してください。';box.classList.remove('hidden');return}try{const ref=doc(db,'events',id),snap=await getDoc(ref);if(!snap.exists())throw new Error('not-found');const ev=snap.data();if(ev.ownerUid&&ev.ownerUid!==currentUser.uid){box.textContent='このイベントには別の主催者が設定されています。';box.classList.remove('hidden');return}if(!ev.ownerUid)await updateDoc(ref,{ownerUid:currentUser.uid,ownerEmail:currentUser.email||'',claimedAt:Date.now()});document.getElementById('import-value').value='';await loadEventList()}catch(e){console.error(e);box.textContent='イベントを管理対象に追加できませんでした。URLまたはIDをご確認ください。';box.classList.remove('hidden')}};
 
-  function saveTokenMap(map) {
-    localStorage.setItem(TOKEN_KEY, JSON.stringify(map));
-  }
-
-  function setAdminToken(id, token) {
-    const map = getTokenMap();
-    map[id] = token;
-    saveTokenMap(map);
-  }
-
-  function getAdminToken(id) {
-    return getTokenMap()[id] || null;
-  }
-
-  function removeAdminToken(id) {
-    const map = getTokenMap();
-    delete map[id];
-    saveTokenMap(map);
-  }
-
-  function createAdminToken() {
-    const bytes = new Uint8Array(24);
-    crypto.getRandomValues(bytes);
-    return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
-  }
-
-  async function hashToken(token) {
-    const bytes = new TextEncoder().encode(token);
-    const digest = await crypto.subtle.digest('SHA-256', bytes);
-    return Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
-  }
-
-  async function isOwnedEvent(event) {
-    const token = getAdminToken(event.id);
-    if (!token || !event.ownerTokenHash) return false;
-    return (await hashToken(token)) === event.ownerTokenHash;
-  }
-
-  function rememberEvent(id) {
-    const ids = getStoredIds();
-    if (!ids.includes(id)) ids.unshift(id);
-    saveStoredIds(ids);
-  }
-
-  function forgetEvent(id) {
-    saveStoredIds(getStoredIds().filter(x => x !== id));
-  }
-
-  function setTab(name) {
-    const isList = name === 'list';
-    document.getElementById('panel-list').classList.toggle('hidden', !isList);
-    document.getElementById('panel-create').classList.toggle('hidden', isList);
-    document.getElementById('tab-list').classList.toggle('active', isList);
-    document.getElementById('tab-create').classList.toggle('active', !isList);
-    if (isList) loadEventList();
-  }
-
-  document.getElementById('tab-list').onclick = () => setTab('list');
-  document.getElementById('tab-create').onclick = () => setTab('create');
-
-  function formatCreatedAt(value) {
-    if (!value) return '作成日時不明';
-    const date = new Date(Number(value));
-    if (Number.isNaN(date.getTime())) return '作成日時不明';
-    return date.toLocaleString('ja-JP', { year:'numeric', month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' });
-  }
-
-  async function loadEventList() {
-    const status = document.getElementById('event-list-status');
-    const list = document.getElementById('event-list');
-    const ids = getStoredIds();
-    list.innerHTML = '';
-
-    if (ids.length === 0) {
-      status.classList.add('hidden');
-      list.innerHTML = '<div class="empty">このブラウザに登録されたイベントはありません。<br>新規作成するか、既存イベントの共有URLを下から追加してください。</div>';
-      return;
-    }
-
-    status.classList.remove('hidden');
-    status.textContent = 'イベントを読み込み中...';
-    const events = [];
-    const missingIds = [];
-
-    for (const id of ids) {
-      try {
-        const snap = await getDoc(doc(db, 'events', id));
-        if (snap.exists()) {
-          const event = { id, ...snap.data() };
-          event._owned = await isOwnedEvent(event);
-          events.push(event);
-        } else {
-          missingIds.push(id);
-        }
-      } catch (error) {
-        console.error(error);
-      }
-    }
-
-    if (missingIds.length) saveStoredIds(ids.filter(id => !missingIds.includes(id)));
-    events.sort((a,b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
-    status.classList.add('hidden');
-
-    if (!events.length) {
-      list.innerHTML = '<div class="empty">表示できるイベントがありません。</div>';
-      return;
-    }
-
-    events.forEach(event => {
-      const responses = event.responses ? Object.keys(event.responses).length : 0;
-      const dateCount = Array.isArray(event.dates) ? event.dates.length : 0;
-      const ownership = event._owned
-        ? '<span class="owner-badge">このブラウザで管理</span>'
-        : '<span class="legacy-badge">閲覧登録のみ</span>';
-      const deleteControl = event._owned
-        ? `<button class="btn-delete btn-danger btn-small" data-id="${escapeHtml(event.id)}" data-name="${escapeHtml(event.name || '名称未設定')}">削除</button>`
-        : `<button class="btn-forget btn-muted btn-small" data-id="${escapeHtml(event.id)}">一覧から外す</button>`;
-
-      const card = document.createElement('div');
-      card.className = 'event-card';
-      card.innerHTML = `
-        <div class="event-card-main">
-          <div>
-            <h3>${escapeHtml(event.name || '名称未設定')}</h3>
-            <div class="meta">候補 ${dateCount}件 ・ 回答者 ${responses}人 ・ ${escapeHtml(formatCreatedAt(event.createdAt))}</div>
-            ${ownership}
-          </div>
-          <div class="actions">
-            <button class="btn-open btn-small" data-id="${escapeHtml(event.id)}">開く</button>
-            <button class="btn-qr btn-secondary btn-small" data-id="${escapeHtml(event.id)}">QR</button>
-            ${deleteControl}
-          </div>
-        </div>`;
-      list.appendChild(card);
-    });
-
-    list.querySelectorAll('.btn-open').forEach(btn => {
-      btn.onclick = () => window.open(getShareUrl(btn.dataset.id), '_blank', 'noopener');
-    });
-
-    list.querySelectorAll('.btn-qr').forEach(btn => {
-      btn.onclick = () => showQr(getShareUrl(btn.dataset.id));
-    });
-
-    list.querySelectorAll('.btn-forget').forEach(btn => {
-      btn.onclick = async () => {
-        forgetEvent(btn.dataset.id);
-        removeAdminToken(btn.dataset.id);
-        await loadEventList();
-      };
-    });
-
-    list.querySelectorAll('.btn-delete').forEach(btn => {
-      btn.onclick = async () => {
-        const id = btn.dataset.id;
-        const snap = await getDoc(doc(db, 'events', id));
-        if (!snap.exists()) {
-          forgetEvent(id);
-          removeAdminToken(id);
-          return loadEventList();
-        }
-        const event = { id, ...snap.data() };
-        if (!(await isOwnedEvent(event))) {
-          alert('このブラウザには、このイベントを削除する管理トークンがありません。');
-          return;
-        }
-
-        const ok = confirm(`「${btn.dataset.name}」を削除しますか？\n\n回答データも含めて削除され、元に戻せません。`);
-        if (!ok) return;
-        btn.disabled = true;
-        try {
-          await deleteDoc(doc(db, 'events', id));
-          forgetEvent(id);
-          removeAdminToken(id);
-          await loadEventList();
-        } catch (error) {
-          console.error(error);
-          alert('削除できませんでした。Firestoreの削除権限をご確認ください。');
-          btn.disabled = false;
-        }
-      };
-    });
-  }
-
-  flatpickr('#calendar', {
-    locale:'ja',
-    mode:'multiple',
-    dateFormat:'Y-m-d',
-    closeOnSelect:false,
-    onChange(selectedDatesObj, dateStr, instance) {
-      if (!selectedDatesObj.length) return;
-      const defaultTimeStr = document.getElementById('default-time').value.trim();
-      const timeArray = defaultTimeStr.split(/[,&、]+/).map(v => v.trim()).filter(Boolean);
-      if (!timeArray.length) timeArray.push('');
-
-      selectedDatesObj.forEach(dateObj => {
-        const dateText = instance.formatDate(dateObj, 'Y-m-d (D)');
-        const raw = instance.formatDate(dateObj, 'Y-m-d');
-        timeArray.forEach(time => {
-          if (!selectedCandidateDates.some(x => x.date === dateText && x.time === time)) {
-            selectedCandidateDates.push({ date:dateText, time, raw });
-          }
-        });
-      });
-
-      selectedCandidateDates.sort((a,b) => a.raw === b.raw ? a.time.localeCompare(b.time) : new Date(a.raw) - new Date(b.raw));
-      const month = instance.currentMonth;
-      const year = instance.currentYear;
-      instance.clear();
-      instance.jumpToDate(new Date(year, month, 1));
-      renderSelectedDates();
-    }
-  });
-
-  function renderSelectedDates() {
-    const container = document.getElementById('selected-dates');
-    container.innerHTML = '';
-    if (!selectedCandidateDates.length) {
-      container.innerHTML = '<p style="color:#999;font-size:.9em;margin:0;">カレンダーから日付を選ぶと、ここに追加されます。</p>';
-      return;
-    }
-    selectedCandidateDates.forEach((item,index) => {
-      const row = document.createElement('div');
-      row.className = 'date-item';
-      row.innerHTML = `
-        <span>${escapeHtml(item.date)}</span>
-        <input class="time-input" data-index="${index}" type="text" value="${escapeHtml(item.time)}" placeholder="時間">
-        <button class="btn-remove" data-index="${index}" type="button">&times;</button>`;
-      container.appendChild(row);
-    });
-    container.querySelectorAll('.time-input').forEach(input => {
-      input.onchange = () => selectedCandidateDates[Number(input.dataset.index)].time = input.value;
-    });
-    container.querySelectorAll('.btn-remove').forEach(btn => {
-      btn.onclick = () => {
-        selectedCandidateDates.splice(Number(btn.dataset.index),1);
-        renderSelectedDates();
-      };
-    });
-  }
-
-  renderSelectedDates();
-
-  document.getElementById('btn-create-event').onclick = async () => {
-    const errorBox = document.getElementById('create-error');
-    errorBox.classList.add('hidden');
-    const name = document.getElementById('event-name').value.trim();
-    if (!name) return alert('イベント名を入力してください。');
-    if (!selectedCandidateDates.length) return alert('候補日を1つ以上追加してください。');
-
-    let id = '';
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    for (let i=0;i<8;i++) id += chars.charAt(Math.floor(Math.random()*chars.length));
-
-    const adminToken = createAdminToken();
-    const ownerTokenHash = await hashToken(adminToken);
-    const eventData = {
-      id,
-      name,
-      dates:selectedCandidateDates.map(x => ({ date:x.date, time:x.time })),
-      responses:{},
-      createdAt:Date.now(),
-      ownerTokenHash
-    };
-
-    const btn = document.getElementById('btn-create-event');
-    btn.disabled = true;
-    try {
-      await setDoc(doc(db,'events',id),eventData);
-      setAdminToken(id, adminToken);
-      rememberEvent(id);
-      document.getElementById('event-name').value = '';
-      document.getElementById('default-time').value = '';
-      selectedCandidateDates = [];
-      renderSelectedDates();
-      showQr(getShareUrl(id));
-      setTab('list');
-    } catch (error) {
-      console.error(error);
-      errorBox.textContent = 'イベントの作成に失敗しました。Firestoreの権限をご確認ください。';
-      errorBox.classList.remove('hidden');
-    } finally {
-      btn.disabled = false;
-    }
-  };
-
-  function parseEventId(value) {
-    const text = value.trim();
-    if (/^[A-Za-z0-9]{8}$/.test(text)) return text;
-    try {
-      const url = new URL(text);
-      const id = url.searchParams.get('id');
-      return /^[A-Za-z0-9]{8}$/.test(id || '') ? id : null;
-    } catch {
-      return null;
-    }
-  }
-
-  document.getElementById('btn-import').onclick = async () => {
-    const box = document.getElementById('import-error');
-    box.classList.add('hidden');
-    const id = parseEventId(document.getElementById('import-value').value);
-    if (!id) {
-      box.textContent = '共有URLまたは8文字のイベントIDを入力してください。';
-      box.classList.remove('hidden');
-      return;
-    }
-    try {
-      const snap = await getDoc(doc(db,'events',id));
-      if (!snap.exists()) throw new Error('not-found');
-      rememberEvent(id);
-      document.getElementById('import-value').value = '';
-      await loadEventList();
-    } catch (error) {
-      console.error(error);
-      box.textContent = 'イベントを確認できませんでした。URLまたはIDをご確認ください。';
-      box.classList.remove('hidden');
-    }
-  };
-
-  function showQr(url) {
-    const container = document.getElementById('qr-code');
-    container.innerHTML = '';
-    document.getElementById('qr-url').textContent = url;
-    if (window.QRCode) {
-      new window.QRCode(container, { text:url, width:220, height:220, correctLevel:window.QRCode.CorrectLevel.M });
-    } else {
-      container.textContent = 'QRコードを生成できませんでした。';
-    }
-    document.getElementById('qr-modal').classList.remove('hidden');
-  }
-
-  function closeQr() { document.getElementById('qr-modal').classList.add('hidden'); }
-  document.getElementById('btn-close-qr').onclick = closeQr;
-  document.getElementById('qr-modal').onclick = event => { if (event.target.id === 'qr-modal') closeQr(); };
-  document.addEventListener('keydown', event => { if (event.key === 'Escape') closeQr(); });
-
-  loadEventList();
+  function showQr(url){const c=document.getElementById('qr-code');c.innerHTML='';document.getElementById('qr-url').textContent=url;if(window.QRCode)new window.QRCode(c,{text:url,width:220,height:220,correctLevel:window.QRCode.CorrectLevel.M});else c.textContent='QRコードを生成できませんでした。';document.getElementById('qr-modal').classList.remove('hidden')}
+  function closeQr(){document.getElementById('qr-modal').classList.add('hidden')} document.getElementById('btn-close-qr').onclick=closeQr;document.getElementById('qr-modal').onclick=e=>{if(e.target.id==='qr-modal')closeQr()};
 </script>
 </body>
 </html>
