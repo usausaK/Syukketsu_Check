@@ -10,18 +10,20 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     :root{--primary:#1976d2;--primary-dark:#115293;--bg:#f5f7fa;--text:#333;--muted:#666;--border:#d0d7de;--danger:#c62828}
-    *{box-sizing:border-box}body{font-family:"Helvetica Neue",Arial,"Hiragino Kaku Gothic ProN","Hiragino Sans",Meiryo,sans-serif;background:var(--bg);color:var(--text);margin:0;padding:20px;line-height:1.6}
+    *{box-sizing:border-box}
+    body{font-family:"Helvetica Neue",Arial,"Hiragino Kaku Gothic ProN","Hiragino Sans",Meiryo,sans-serif;background:var(--bg);color:var(--text);margin:0;padding:20px;line-height:1.6}
     .container{max-width:900px;margin:0 auto;background:#fff;border-radius:10px;padding:28px;box-shadow:0 4px 10px rgba(0,0,0,.08)}
-    h1,h2{color:var(--primary)}h1{margin-top:0}.hidden{display:none!important}
+    h1,h2{color:var(--primary)} h1{margin-top:0}.hidden{display:none!important}
     button{border:0;border-radius:6px;padding:10px 16px;background:var(--primary);color:#fff;font-size:15px;cursor:pointer}button:hover{background:var(--primary-dark)}button:disabled{opacity:.5;cursor:default}
     .btn-secondary{background:#607d8b}.btn-danger{background:var(--danger)}.btn-small{padding:8px 12px;font-size:14px}.tab.active{background:#0d47a1}
     .login-card{text-align:center;padding:36px 16px}.login-card p{color:var(--muted)}
     .auth-bar{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 12px;background:#f7f9fb;border:1px solid var(--border);border-radius:8px;margin-bottom:20px;flex-wrap:wrap}
     .notice{background:#e3f2fd;border:1px solid #bbdefb;border-radius:8px;padding:12px 14px;margin-bottom:20px;color:#37474f}
-    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}.form-group{margin-bottom:18px}label{display:block;font-weight:bold;margin-bottom:5px}input[type="text"]{width:100%;border:1px solid var(--border);border-radius:5px;padding:10px;font-size:16px}small{color:var(--muted)}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}
+    .form-group{margin-bottom:18px}label{display:block;font-weight:bold;margin-bottom:5px}input[type="text"]{width:100%;border:1px solid var(--border);border-radius:5px;padding:10px;font-size:16px}small{color:var(--muted)}
     .date-list{margin-top:10px}.date-item{display:flex;align-items:center;gap:10px;border:1px solid #e5e7eb;background:#fafafa;padding:10px 12px;border-radius:6px;margin-bottom:8px}.date-item span{flex:1;font-weight:bold}.date-item input{width:120px}.btn-remove{background:transparent;color:var(--danger);font-size:22px;padding:0 6px}
     .event-list{display:grid;gap:12px;margin-top:18px}.event-card{border:1px solid var(--border);border-radius:8px;padding:15px;background:#fff}.event-main{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}.event-card h3{margin:0 0 6px;color:var(--primary)}.meta{color:var(--muted);font-size:.9rem}.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.empty{text-align:center;color:#777;padding:32px 16px;border:1px dashed #aaa;border-radius:8px}
-    .legacy-box{margin-top:28px;padding-top:22px;border-top:1px solid #eee}.legacy-help{color:#666}.error{background:#ffebee;color:#c62828;padding:12px 14px;border-radius:6px;margin-top:12px}
+    .error{background:#ffebee;color:#c62828;padding:12px 14px;border-radius:6px;margin-top:12px}
     .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:20px;z-index:1000}.modal-card{width:min(92vw,380px);background:#fff;border-radius:12px;padding:24px;text-align:center;position:relative}.modal-close{position:absolute;right:10px;top:8px;background:transparent;color:#555;padding:4px 10px;font-size:26px}#qr-code{display:flex;justify-content:center;margin:18px 0}#qr-url{font-size:.78rem;color:#666;word-break:break-all}
     @media(max-width:640px){body{padding:10px}.container{padding:18px}h1{font-size:1.55rem}h2{font-size:1.25rem}.event-main{flex-direction:column}.actions{width:100%;justify-content:stretch}.actions button{flex:1}.date-item{flex-wrap:wrap}.date-item input{width:105px}}
   </style>
@@ -52,14 +54,6 @@
       <h2>イベント一覧</h2>
       <div id="event-list-status">読み込み中...</div>
       <div id="event-list" class="event-list"></div>
-
-      <div class="legacy-box">
-        <h2 style="font-size:1.2rem">以前作成したイベントを探す</h2>
-        <p class="legacy-help">主催者情報が付いていない旧イベントだけを検索します。この検索はログイン中の主催者だけが実行できます。</p>
-        <button id="btn-find-legacy" class="btn-secondary">旧イベントを検索</button>
-        <div id="legacy-status" class="legacy-help" style="margin-top:12px"></div>
-        <div id="legacy-list" class="event-list"></div>
-      </div>
     </section>
 
     <section id="panel-create" class="hidden">
@@ -78,7 +72,7 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getFirestore, collection, query, where, getDocs, doc, setDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import { getFirestore, collection, query, where, getDocs, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
   import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
   const firebaseConfig={apiKey:"AIzaSyAZNUBnvO0t4ExD99dHUQYkJUx1rIKO3hk",authDomain:"scheduleadjustment-41555.firebaseapp.com",projectId:"scheduleadjustment-41555",storageBucket:"scheduleadjustment-41555.firebasestorage.app",messagingSenderId:"989847585888",appId:"1:989847585888:web:6c1d3cc5923facc4dcef05"};
@@ -100,14 +94,9 @@
   document.getElementById('tab-list').onclick=()=>setTab('list');
   document.getElementById('tab-create').onclick=()=>setTab('create');
 
-  function eventCard(ev,legacy=false){const card=document.createElement('div');const responses=ev.responses?Object.keys(ev.responses).length:0,dates=Array.isArray(ev.dates)?ev.dates.length:0;card.className='event-card';card.innerHTML=`<div class="event-main"><div><h3>${esc(ev.name||'名称未設定')}</h3><div class="meta">候補 ${dates}件 ・ 回答者 ${responses}人 ・ ${esc(formatCreatedAt(ev.createdAt))}</div></div><div class="actions"><button class="open btn-small" data-id="${esc(ev.id)}">開く</button><button class="qr btn-secondary btn-small" data-id="${esc(ev.id)}">QR</button>${legacy?`<button class="claim btn-small" data-id="${esc(ev.id)}">管理対象にする</button>`:`<button class="del btn-danger btn-small" data-id="${esc(ev.id)}" data-name="${esc(ev.name||'名称未設定')}">削除</button>`}</div></div>`;return card}
+  function eventCard(ev){const card=document.createElement('div');const responses=ev.responses?Object.keys(ev.responses).length:0,dates=Array.isArray(ev.dates)?ev.dates.length:0;card.className='event-card';card.innerHTML=`<div class="event-main"><div><h3>${esc(ev.name||'名称未設定')}</h3><div class="meta">候補 ${dates}件 ・ 回答者 ${responses}人 ・ ${esc(formatCreatedAt(ev.createdAt))}</div></div><div class="actions"><button class="open btn-small" data-id="${esc(ev.id)}">開く</button><button class="qr btn-secondary btn-small" data-id="${esc(ev.id)}">QR</button><button class="del btn-danger btn-small" data-id="${esc(ev.id)}" data-name="${esc(ev.name||'名称未設定')}">削除</button></div></div>`;return card}
 
-  async function loadEventList(){if(!currentUser)return;const status=document.getElementById('event-list-status'),list=document.getElementById('event-list');status.classList.remove('hidden');status.textContent='イベントを読み込み中...';list.innerHTML='';try{const q=query(collection(db,'events'),where('ownerUid','==',currentUser.uid)),snap=await getDocs(q),events=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(Number(b.createdAt)||0)-(Number(a.createdAt)||0));status.classList.add('hidden');if(!events.length){list.innerHTML='<div class="empty">このGoogleアカウントのイベントはまだありません。</div>';return}events.forEach(ev=>list.appendChild(eventCard(ev,false)));wireCards(list,false)}catch(e){console.error(e);status.textContent='イベント一覧を読み込めませんでした。Firestoreルールをご確認ください。'}}
-
-  function wireCards(container,legacy){container.querySelectorAll('.open').forEach(b=>b.onclick=()=>window.open(shareUrl(b.dataset.id),'_blank','noopener'));container.querySelectorAll('.qr').forEach(b=>b.onclick=()=>showQr(shareUrl(b.dataset.id)));if(legacy){container.querySelectorAll('.claim').forEach(b=>b.onclick=async()=>{b.disabled=true;try{await updateDoc(doc(db,'events',b.dataset.id),{ownerUid:currentUser.uid,ownerEmail:currentUser.email||'',claimedAt:Date.now()});await loadEventList();await findLegacyEvents()}catch(e){console.error(e);alert('管理対象への追加に失敗しました。');b.disabled=false}})}else{container.querySelectorAll('.del').forEach(b=>b.onclick=async()=>{if(!confirm(`「${b.dataset.name}」を削除しますか？\n\n回答も含めて削除され、元に戻せません。`))return;b.disabled=true;try{await deleteDoc(doc(db,'events',b.dataset.id));await loadEventList()}catch(e){console.error(e);alert('削除できませんでした。Firestoreルールをご確認ください。');b.disabled=false}})}}
-
-  async function findLegacyEvents(){if(!currentUser)return;const status=document.getElementById('legacy-status'),list=document.getElementById('legacy-list'),btn=document.getElementById('btn-find-legacy');btn.disabled=true;status.textContent='旧イベントを検索中...';list.innerHTML='';try{const snap=await getDocs(collection(db,'events'));const legacy=snap.docs.map(d=>({id:d.id,...d.data()})).filter(ev=>!ev.ownerUid).sort((a,b)=>(Number(b.createdAt)||0)-(Number(a.createdAt)||0));if(!legacy.length){status.textContent='主催者未設定の旧イベントはありません。';return}status.textContent=`${legacy.length}件見つかりました。`;legacy.forEach(ev=>list.appendChild(eventCard(ev,true)));wireCards(list,true)}catch(e){console.error(e);status.textContent='旧イベントを検索できませんでした。Firestoreルールをご確認ください。'}finally{btn.disabled=false}}
-  document.getElementById('btn-find-legacy').onclick=findLegacyEvents;
+  async function loadEventList(){if(!currentUser)return;const status=document.getElementById('event-list-status'),list=document.getElementById('event-list');status.classList.remove('hidden');status.textContent='イベントを読み込み中...';list.innerHTML='';try{const q=query(collection(db,'events'),where('ownerUid','==',currentUser.uid)),snap=await getDocs(q),events=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(Number(b.createdAt)||0)-(Number(a.createdAt)||0));status.classList.add('hidden');if(!events.length){list.innerHTML='<div class="empty">このGoogleアカウントのイベントはまだありません。</div>';return}events.forEach(ev=>list.appendChild(eventCard(ev)));list.querySelectorAll('.open').forEach(b=>b.onclick=()=>window.open(shareUrl(b.dataset.id),'_blank','noopener'));list.querySelectorAll('.qr').forEach(b=>b.onclick=()=>showQr(shareUrl(b.dataset.id)));list.querySelectorAll('.del').forEach(b=>b.onclick=async()=>{if(!confirm(`「${b.dataset.name}」を削除しますか？\n\n回答も含めて削除され、元に戻せません。`))return;b.disabled=true;try{await deleteDoc(doc(db,'events',b.dataset.id));await loadEventList()}catch(e){console.error(e);alert('削除できませんでした。Firestoreルールをご確認ください。');b.disabled=false}})}catch(e){console.error(e);status.textContent='イベント一覧を読み込めませんでした。Firestoreルールをご確認ください。'}}
 
   flatpickr('#calendar',{locale:'ja',mode:'multiple',dateFormat:'Y-m-d',closeOnSelect:false,onChange(ds,str,inst){if(!ds.length)return;const times=document.getElementById('default-time').value.trim().split(/[,&、]+/).map(v=>v.trim()).filter(Boolean);if(!times.length)times.push('');ds.forEach(d=>{const date=inst.formatDate(d,'Y-m-d (D)'),raw=inst.formatDate(d,'Y-m-d');times.forEach(time=>{if(!selectedCandidateDates.some(x=>x.date===date&&x.time===time))selectedCandidateDates.push({date,time,raw})})});selectedCandidateDates.sort((a,b)=>a.raw===b.raw?a.time.localeCompare(b.time):new Date(a.raw)-new Date(b.raw));const m=inst.currentMonth,y=inst.currentYear;inst.clear();inst.jumpToDate(new Date(y,m,1));renderDates()}});
   function renderDates(){const c=document.getElementById('selected-dates');c.innerHTML='';if(!selectedCandidateDates.length){c.innerHTML='<p style="color:#999;font-size:.9em;margin:0">カレンダーから日付を選ぶと、ここに追加されます。</p>';return}selectedCandidateDates.forEach((x,i)=>{const r=document.createElement('div');r.className='date-item';r.innerHTML=`<span>${esc(x.date)}</span><input class="time" data-i="${i}" type="text" value="${esc(x.time)}" placeholder="時間"><button class="btn-remove" data-i="${i}" type="button">&times;</button>`;c.appendChild(r)});c.querySelectorAll('.time').forEach(x=>x.onchange=()=>selectedCandidateDates[Number(x.dataset.i)].time=x.value);c.querySelectorAll('.btn-remove').forEach(x=>x.onclick=()=>{selectedCandidateDates.splice(Number(x.dataset.i),1);renderDates()})}
@@ -116,7 +105,9 @@
   document.getElementById('btn-create-event').onclick=async()=>{if(!currentUser)return;const name=document.getElementById('event-name').value.trim();if(!name)return alert('イベント名を入力してください。');if(!selectedCandidateDates.length)return alert('候補日を1つ以上追加してください。');const id=randomId(),btn=document.getElementById('btn-create-event'),box=document.getElementById('create-error');box.classList.add('hidden');btn.disabled=true;try{await setDoc(doc(db,'events',id),{id,name,dates:selectedCandidateDates.map(x=>({date:x.date,time:x.time})),responses:{},createdAt:Date.now(),ownerUid:currentUser.uid,ownerEmail:currentUser.email||''});document.getElementById('event-name').value='';document.getElementById('default-time').value='';selectedCandidateDates=[];renderDates();showQr(shareUrl(id));setTab('list')}catch(e){console.error(e);box.textContent='イベントの作成に失敗しました。Firestoreルールをご確認ください。';box.classList.remove('hidden')}finally{btn.disabled=false}};
 
   function showQr(url){const c=document.getElementById('qr-code');c.innerHTML='';document.getElementById('qr-url').textContent=url;if(window.QRCode)new window.QRCode(c,{text:url,width:220,height:220,correctLevel:window.QRCode.CorrectLevel.M});else c.textContent='QRコードを生成できませんでした。';document.getElementById('qr-modal').classList.remove('hidden')}
-  function closeQr(){document.getElementById('qr-modal').classList.add('hidden')}document.getElementById('btn-close-qr').onclick=closeQr;document.getElementById('qr-modal').onclick=e=>{if(e.target.id==='qr-modal')closeQr()};
+  function closeQr(){document.getElementById('qr-modal').classList.add('hidden')}
+  document.getElementById('btn-close-qr').onclick=closeQr;
+  document.getElementById('qr-modal').onclick=e=>{if(e.target.id==='qr-modal')closeQr()};
 </script>
 </body>
 </html>
