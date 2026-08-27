@@ -13,18 +13,18 @@
     *{box-sizing:border-box}
     body{font-family:"Helvetica Neue",Arial,"Hiragino Kaku Gothic ProN","Hiragino Sans",Meiryo,sans-serif;background:var(--bg);color:var(--text);margin:0;padding:20px;line-height:1.6}
     .container{max-width:900px;margin:0 auto;background:#fff;border-radius:10px;padding:28px;box-shadow:0 4px 10px rgba(0,0,0,.08)}
-    h1,h2{color:var(--primary)} h1{margin-top:0}.hidden{display:none!important}
+    h1,h2{color:var(--primary)}h1{margin-top:0}.hidden{display:none!important}
     button{border:0;border-radius:6px;padding:10px 16px;background:var(--primary);color:#fff;font-size:15px;cursor:pointer}button:hover{background:var(--primary-dark)}button:disabled{opacity:.5;cursor:default}
     .btn-secondary{background:#607d8b}.btn-danger{background:var(--danger)}.btn-guest{background:var(--guest)}.btn-guest:hover{background:var(--guest-dark)}.btn-small{padding:8px 12px;font-size:14px}.tab.active{background:#0d47a1}.tab.guest-tab.active{background:var(--guest)}
     .login-card{text-align:center;padding:36px 16px}.login-card p{color:var(--muted)}
     .auth-bar{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 12px;background:#f7f9fb;border:1px solid var(--border);border-radius:8px;margin-bottom:20px;flex-wrap:wrap}
     .notice{background:#e3f2fd;border:1px solid #bbdefb;border-radius:8px;padding:12px 14px;margin-bottom:20px;color:#37474f}.guest-notice{background:#f3e5f5;border-color:#e1bee7}
     .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}
-    .form-group{margin-bottom:18px}label{display:block;font-weight:bold;margin-bottom:5px}input[type="text"],input[type="email"]{width:100%;border:1px solid var(--border);border-radius:5px;padding:10px;font-size:16px}small{color:var(--muted)}
+    .form-group{margin-bottom:18px}label{display:block;font-weight:bold;margin-bottom:5px}input[type="text"]{width:100%;border:1px solid var(--border);border-radius:5px;padding:10px;font-size:16px}small{color:var(--muted)}
     .date-list{margin-top:10px}.date-item{display:flex;align-items:center;gap:10px;border:1px solid #e5e7eb;background:#fafafa;padding:10px 12px;border-radius:6px;margin-bottom:8px}.date-item span{flex:1;font-weight:bold}.date-item input{width:120px}.btn-remove{background:transparent;color:var(--danger);font-size:22px;padding:0 6px}
     .event-list{display:grid;gap:12px;margin-top:18px}.event-card{border:1px solid var(--border);border-radius:8px;padding:15px;background:#fff}.event-main{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}.event-card h3{margin:0 0 6px;color:var(--primary)}.meta{color:var(--muted);font-size:.9rem}.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.empty{text-align:center;color:#777;padding:32px 16px;border:1px dashed #aaa;border-radius:8px}.guest-badge{display:inline-block;margin-left:7px;padding:2px 7px;border-radius:999px;background:#f3e5f5;color:var(--guest);font-size:.72rem;vertical-align:middle}
     .error{background:#ffebee;color:#c62828;padding:12px 14px;border-radius:6px;margin-top:12px}
-    .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:20px;z-index:1000}.modal-card{width:min(92vw,430px);background:#fff;border-radius:12px;padding:24px;text-align:center;position:relative}.modal-close{position:absolute;right:10px;top:8px;background:transparent;color:#555;padding:4px 10px;font-size:26px}#qr-code{display:flex;justify-content:center;margin:18px 0}#qr-url,.share-url-text{font-size:.78rem;color:#666;word-break:break-all;padding:10px;background:#f7f7f7;border-radius:6px;margin:10px 0}.modal-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:20px;z-index:1000}.modal-card{width:min(92vw,440px);background:#fff;border-radius:12px;padding:24px;text-align:center;position:relative}.modal-close{position:absolute;right:10px;top:8px;background:transparent;color:#555;padding:4px 10px;font-size:26px}#qr-code{display:flex;justify-content:center;margin:18px 0}#qr-url,.share-url-text{font-size:.78rem;color:#666;word-break:break-all;padding:10px;background:#f7f7f7;border-radius:6px;margin:10px 0}.modal-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px}
     @media(max-width:640px){body{padding:10px}.container{padding:18px}h1{font-size:1.55rem}h2{font-size:1.25rem}.event-main{flex-direction:column}.actions{width:100%;justify-content:stretch}.actions button{flex:1}.date-item{flex-wrap:wrap}.date-item input{width:105px}.tabs button{flex:1 1 45%}}
   </style>
 </head>
@@ -39,10 +39,7 @@
 
   <section id="admin-view" class="hidden">
     <h1>主催者用イベント管理</h1>
-    <div class="auth-bar">
-      <div>ログイン中：<span id="user-email"></span></div>
-      <button id="btn-logout" class="btn-secondary btn-small">ログアウト</button>
-    </div>
+    <div class="auth-bar"><div>ログイン中：<span id="user-email"></span></div><button id="btn-logout" class="btn-secondary btn-small">ログアウト</button></div>
     <div class="notice">参加者には各イベントの共有リンクだけを送ります。イベント一覧・削除は、この主催者用画面から行います。</div>
 
     <div class="tabs">
@@ -69,12 +66,7 @@
 
     <section id="panel-guest" class="hidden">
       <h2>ゲストにイベントを与える</h2>
-      <div class="notice guest-notice">ここで作るイベントは、指定したGoogleアカウントのゲスト管理者だけが編集できます。ゲストにはイベント一覧は表示されません。</div>
-      <div class="form-group">
-        <label for="guest-email">ゲスト管理者のGoogleメールアドレス</label>
-        <input id="guest-email" type="email" autocomplete="email" placeholder="例：guest@gmail.com">
-        <small>ゲストは、このメールアドレスのGoogleアカウントでログインします。</small>
-      </div>
+      <div class="notice guest-notice"><strong>メールアドレスの入力は不要です。</strong><br>ボタンを押すと、推測困難な専用管理URLを発行します。そのURLを受け取ったゲストは、その1件だけイベント名・候補日時の設定・削除ができます。イベント一覧は表示されません。</div>
       <button id="btn-create-guest-event" class="btn-guest">ゲスト用イベントを作成</button>
       <div id="guest-create-error" class="error hidden"></div>
     </section>
@@ -82,12 +74,11 @@
 </div>
 
 <div id="qr-modal" class="modal hidden"><div class="modal-card"><button id="btn-close-qr" class="modal-close" aria-label="閉じる">&times;</button><h2 style="margin-top:0">共有用QRコード</h2><div id="qr-code"></div><div id="qr-url"></div></div></div>
-
-<div id="guest-link-modal" class="modal hidden"><div class="modal-card"><button id="btn-close-guest-link" class="modal-close" aria-label="閉じる">&times;</button><h2 style="margin-top:0;color:#7b1fa2">ゲスト管理URL</h2><p id="guest-link-message">このURLをゲスト管理者に送ってください。</p><div id="guest-link-url" class="share-url-text"></div><div class="modal-actions"><button id="btn-copy-guest-link" class="btn-guest">URLをコピー</button><button id="btn-close-guest-link-bottom" class="btn-secondary">閉じる</button></div></div></div>
+<div id="guest-link-modal" class="modal hidden"><div class="modal-card"><button id="btn-close-guest-link" class="modal-close" aria-label="閉じる">&times;</button><h2 style="margin-top:0;color:#7b1fa2">ゲスト管理URL</h2><p id="guest-link-message">このURLをゲスト管理者本人に送ってください。</p><div id="guest-link-url" class="share-url-text"></div><div class="notice guest-notice" style="text-align:left;margin:12px 0 0"><strong>重要：</strong>このURLを知っている人は、このイベントを管理できます。参加者には送らないでください。</div><div class="modal-actions"><button id="btn-copy-guest-link" class="btn-guest">URLをコピー</button><button id="btn-close-guest-link-bottom" class="btn-secondary">閉じる</button></div></div></div>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getFirestore, collection, query, where, getDocs, doc, setDoc, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import { getFirestore, collection, query, where, getDocs, getDoc, doc, setDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
   import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
   const firebaseConfig={apiKey:"AIzaSyAZNUBnvO0t4ExD99dHUQYkJUx1rIKO3hk",authDomain:"scheduleadjustment-41555.firebaseapp.com",projectId:"scheduleadjustment-41555",storageBucket:"scheduleadjustment-41555.firebasestorage.app",messagingSenderId:"989847585888",appId:"1:989847585888:web:6c1d3cc5923facc4dcef05"};
@@ -97,11 +88,11 @@
   const esc=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
   const getIndexUrl=()=>`${location.origin}${location.pathname.replace(/admin\.html$/i,'index.html')}`;
   const getGuestBaseUrl=()=>`${location.origin}${location.pathname.replace(/admin\.html$/i,'guest.html')}`;
-  const shareUrl=id=>`${getIndexUrl()}?id=${id}#%28%5Eo%5E%29%E2%98%86%E5%BD%A1`;
-  const guestUrl=id=>`${getGuestBaseUrl()}?id=${encodeURIComponent(id)}`;
+  const shareUrl=id=>`${getIndexUrl()}?id=${encodeURIComponent(id)}#%28%5Eo%5E%29%E2%98%86%E5%BD%A1`;
+  const guestUrl=(id,token)=>`${getGuestBaseUrl()}?id=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}`;
   function randomId(){const c='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';let id='';for(let i=0;i<8;i++)id+=c[Math.floor(Math.random()*c.length)];return id}
+  function randomToken(){const bytes=new Uint8Array(32);crypto.getRandomValues(bytes);let s='';bytes.forEach(b=>s+=String.fromCharCode(b));return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
   function formatCreatedAt(v){if(!v)return'作成日時不明';const d=new Date(Number(v));return Number.isNaN(d.getTime())?'作成日時不明':d.toLocaleString('ja-JP')}
-  function validEmail(v){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)}
   async function copyText(text){try{await navigator.clipboard.writeText(text);return true}catch{return false}}
 
   async function login(){const box=document.getElementById('login-error');box.classList.add('hidden');try{await setPersistence(auth,browserLocalPersistence);await signInWithPopup(auth,provider)}catch(e){console.error(e);box.textContent=`Googleログインに失敗しました。${e.code||''}`;box.classList.remove('hidden')}}
@@ -109,52 +100,39 @@
   document.getElementById('btn-logout').onclick=()=>signOut(auth);
   onAuthStateChanged(auth,user=>{currentUser=user||null;document.getElementById('login-view').classList.toggle('hidden',!!user);document.getElementById('admin-view').classList.toggle('hidden',!user);if(user){document.getElementById('user-email').textContent=user.email||user.uid;loadEventList()}});
 
-  function setTab(name){
-    const panels=['list','create','guest'];
-    panels.forEach(x=>{
-      document.getElementById(`panel-${x}`).classList.toggle('hidden',x!==name);
-      document.getElementById(`tab-${x}`).classList.toggle('active',x===name);
-    });
-    if(name==='list')loadEventList();
-  }
+  function setTab(name){['list','create','guest'].forEach(x=>{document.getElementById(`panel-${x}`).classList.toggle('hidden',x!==name);document.getElementById(`tab-${x}`).classList.toggle('active',x===name)});if(name==='list')loadEventList()}
   document.getElementById('tab-list').onclick=()=>setTab('list');
   document.getElementById('tab-create').onclick=()=>setTab('create');
   document.getElementById('tab-guest').onclick=()=>setTab('guest');
 
   function eventCard(ev){
     const card=document.createElement('div');
-    const responses=ev.responses?Object.keys(ev.responses).length:0,dates=Array.isArray(ev.dates)?ev.dates.length:0;
-    const isGuest=ev.managementType==='guest';
-    const title=ev.name|| (isGuest?'ゲスト用イベント（未設定）':'名称未設定');
+    const responses=ev.responses?Object.keys(ev.responses).length:0,dates=Array.isArray(ev.dates)?ev.dates.length:0,isGuest=ev.managementType==='guest',title=ev.name||(isGuest?'ゲスト用イベント（未設定）':'名称未設定');
     card.className='event-card';
     card.innerHTML=`<div class="event-main"><div><h3>${esc(title)}${isGuest?'<span class="guest-badge">ゲスト管理</span>':''}</h3><div class="meta">候補 ${dates}件 ・ 回答者 ${responses}人 ・ ${esc(formatCreatedAt(ev.createdAt))}</div></div><div class="actions"><button class="open btn-small" data-id="${esc(ev.id)}">開く</button><button class="qr btn-secondary btn-small" data-id="${esc(ev.id)}">QR</button>${isGuest?`<button class="guest-link btn-guest btn-small" data-id="${esc(ev.id)}">ゲストURL</button>`:''}<button class="del btn-danger btn-small" data-id="${esc(ev.id)}" data-name="${esc(title)}">削除</button></div></div>`;
     return card;
   }
 
-  async function deleteEventAndGrant(id){
-    const batch=writeBatch(db);
-    batch.delete(doc(db,'events',id));
-    batch.delete(doc(db,'guestGrants',id));
-    await batch.commit();
+  async function deleteEventAndGrant(id){const batch=writeBatch(db);batch.delete(doc(db,'events',id));batch.delete(doc(db,'guestGrants',id));await batch.commit()}
+
+  async function openGuestLinkForEvent(id){
+    try{
+      const ref=doc(db,'guestGrants',id),snap=await getDoc(ref);let token=snap.exists()?snap.data().accessToken:'';
+      if(!token){token=randomToken();await setDoc(ref,{eventId:id,accessToken:token,ownerUid:currentUser.uid,updatedAt:Date.now()},{merge:true})}
+      showGuestLink(guestUrl(id,token));
+    }catch(e){console.error(e);alert('ゲスト管理URLを取得できませんでした。')}
   }
 
   async function loadEventList(){
-    if(!currentUser)return;
-    const status=document.getElementById('event-list-status'),list=document.getElementById('event-list');
-    status.classList.remove('hidden');status.textContent='イベントを読み込み中...';list.innerHTML='';
+    if(!currentUser)return;const status=document.getElementById('event-list-status'),list=document.getElementById('event-list');status.classList.remove('hidden');status.textContent='イベントを読み込み中...';list.innerHTML='';
     try{
       const q=query(collection(db,'events'),where('ownerUid','==',currentUser.uid)),snap=await getDocs(q),events=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(Number(b.createdAt)||0)-(Number(a.createdAt)||0));
-      status.classList.add('hidden');
-      if(!events.length){list.innerHTML='<div class="empty">このGoogleアカウントのイベントはまだありません。</div>';return}
+      status.classList.add('hidden');if(!events.length){list.innerHTML='<div class="empty">このGoogleアカウントのイベントはまだありません。</div>';return}
       events.forEach(ev=>list.appendChild(eventCard(ev)));
       list.querySelectorAll('.open').forEach(b=>b.onclick=()=>window.open(shareUrl(b.dataset.id),'_blank','noopener'));
       list.querySelectorAll('.qr').forEach(b=>b.onclick=()=>showQr(shareUrl(b.dataset.id)));
-      list.querySelectorAll('.guest-link').forEach(b=>b.onclick=()=>showGuestLink(guestUrl(b.dataset.id)));
-      list.querySelectorAll('.del').forEach(b=>b.onclick=async()=>{
-        if(!confirm(`「${b.dataset.name}」を削除しますか？\n\n回答も含めて削除され、元に戻せません。`))return;
-        b.disabled=true;
-        try{await deleteEventAndGrant(b.dataset.id);await loadEventList()}catch(e){console.error(e);alert('削除できませんでした。Firestoreルールをご確認ください。');b.disabled=false}
-      });
+      list.querySelectorAll('.guest-link').forEach(b=>b.onclick=()=>openGuestLinkForEvent(b.dataset.id));
+      list.querySelectorAll('.del').forEach(b=>b.onclick=async()=>{if(!confirm(`「${b.dataset.name}」を削除しますか？\n\n回答も含めて削除され、元に戻せません。`))return;b.disabled=true;try{await deleteEventAndGrant(b.dataset.id);await loadEventList()}catch(e){console.error(e);alert('削除できませんでした。Firestoreルールをご確認ください。');b.disabled=false}});
     }catch(e){console.error(e);status.textContent='イベント一覧を読み込めませんでした。Firestoreルールをご確認ください。'}
   }
 
@@ -163,52 +141,21 @@
   renderDates();
 
   document.getElementById('btn-create-event').onclick=async()=>{
-    if(!currentUser)return;
-    const name=document.getElementById('event-name').value.trim();
-    if(!name)return alert('イベント名を入力してください。');
-    if(!selectedCandidateDates.length)return alert('候補日を1つ以上追加してください。');
-    const id=randomId(),btn=document.getElementById('btn-create-event'),box=document.getElementById('create-error');box.classList.add('hidden');btn.disabled=true;
-    try{
-      await setDoc(doc(db,'events',id),{id,name,dates:selectedCandidateDates.map(x=>({date:x.date,time:x.time})),responses:{},createdAt:Date.now(),ownerUid:currentUser.uid,ownerEmail:currentUser.email||'',managementType:'owner'});
-      document.getElementById('event-name').value='';document.getElementById('default-time').value='';selectedCandidateDates=[];renderDates();showQr(shareUrl(id));setTab('list');
-    }catch(e){console.error(e);box.textContent='イベントの作成に失敗しました。Firestoreルールをご確認ください。';box.classList.remove('hidden')}finally{btn.disabled=false}
+    if(!currentUser)return;const name=document.getElementById('event-name').value.trim();if(!name)return alert('イベント名を入力してください。');if(!selectedCandidateDates.length)return alert('候補日を1つ以上追加してください。');const id=randomId(),btn=document.getElementById('btn-create-event'),box=document.getElementById('create-error');box.classList.add('hidden');btn.disabled=true;
+    try{await setDoc(doc(db,'events',id),{id,name,dates:selectedCandidateDates.map(x=>({date:x.date,time:x.time})),responses:{},createdAt:Date.now(),ownerUid:currentUser.uid,ownerEmail:currentUser.email||'',managementType:'owner'});document.getElementById('event-name').value='';document.getElementById('default-time').value='';selectedCandidateDates=[];renderDates();showQr(shareUrl(id));setTab('list')}catch(e){console.error(e);box.textContent='イベントの作成に失敗しました。Firestoreルールをご確認ください。';box.classList.remove('hidden')}finally{btn.disabled=false}
   };
 
   document.getElementById('btn-create-guest-event').onclick=async()=>{
-    if(!currentUser)return;
-    const input=document.getElementById('guest-email'),email=input.value.trim().toLowerCase();
-    const box=document.getElementById('guest-create-error'),btn=document.getElementById('btn-create-guest-event');
-    box.classList.add('hidden');
-    if(!validEmail(email)){box.textContent='ゲスト管理者のGoogleメールアドレスを入力してください。';box.classList.remove('hidden');return}
-    const id=randomId(),createdAt=Date.now();btn.disabled=true;
-    try{
-      const batch=writeBatch(db);
-      batch.set(doc(db,'events',id),{id,name:'',dates:[],responses:{},createdAt,ownerUid:currentUser.uid,ownerEmail:currentUser.email||'',managementType:'guest'});
-      batch.set(doc(db,'guestGrants',id),{eventId:id,guestEmail:email,ownerUid:currentUser.uid,createdAt});
-      await batch.commit();
-      input.value='';
-      showGuestLink(guestUrl(id),email);
-    }catch(e){console.error(e);box.textContent='ゲスト用イベントを作成できませんでした。Firestoreルールをご確認ください。';box.classList.remove('hidden')}finally{btn.disabled=false}
+    if(!currentUser)return;const box=document.getElementById('guest-create-error'),btn=document.getElementById('btn-create-guest-event'),id=randomId(),token=randomToken(),createdAt=Date.now();box.classList.add('hidden');btn.disabled=true;
+    try{const batch=writeBatch(db);batch.set(doc(db,'events',id),{id,name:'',dates:[],responses:{},createdAt,ownerUid:currentUser.uid,ownerEmail:currentUser.email||'',managementType:'guest'});batch.set(doc(db,'guestGrants',id),{eventId:id,accessToken:token,ownerUid:currentUser.uid,createdAt});await batch.commit();showGuestLink(guestUrl(id,token));loadEventList()}catch(e){console.error(e);box.textContent='ゲスト用イベントを作成できませんでした。Firestoreルールをご確認ください。';box.classList.remove('hidden')}finally{btn.disabled=false}
   };
 
   function showQr(url){const c=document.getElementById('qr-code');c.innerHTML='';document.getElementById('qr-url').textContent=url;if(window.QRCode)new window.QRCode(c,{text:url,width:220,height:220,correctLevel:window.QRCode.CorrectLevel.M});else c.textContent='QRコードを生成できませんでした。';document.getElementById('qr-modal').classList.remove('hidden')}
-  function closeQr(){document.getElementById('qr-modal').classList.add('hidden')}
-  document.getElementById('btn-close-qr').onclick=closeQr;
-  document.getElementById('qr-modal').onclick=e=>{if(e.target.id==='qr-modal')closeQr()};
+  function closeQr(){document.getElementById('qr-modal').classList.add('hidden')}document.getElementById('btn-close-qr').onclick=closeQr;document.getElementById('qr-modal').onclick=e=>{if(e.target.id==='qr-modal')closeQr()};
 
-  function showGuestLink(url,email=''){
-    currentGuestLink=url;
-    document.getElementById('guest-link-url').textContent=url;
-    document.getElementById('guest-link-message').textContent=email?`このURLを ${email} のゲスト管理者に送ってください。イベント一覧は表示されません。`:'このURLを指定済みのゲスト管理者に送ってください。イベント一覧は表示されません。';
-    document.getElementById('guest-link-modal').classList.remove('hidden');
-  }
-  function closeGuestLink(){document.getElementById('guest-link-modal').classList.add('hidden')}
-  document.getElementById('btn-close-guest-link').onclick=closeGuestLink;
-  document.getElementById('btn-close-guest-link-bottom').onclick=closeGuestLink;
-  document.getElementById('guest-link-modal').onclick=e=>{if(e.target.id==='guest-link-modal')closeGuestLink()};
-  document.getElementById('btn-copy-guest-link').onclick=async()=>{
-    if(await copyText(currentGuestLink)){const b=document.getElementById('btn-copy-guest-link'),old=b.textContent;b.textContent='コピーしました';setTimeout(()=>b.textContent=old,1400)}else window.prompt('このURLをコピーしてください',currentGuestLink);
-  };
+  function showGuestLink(url){currentGuestLink=url;document.getElementById('guest-link-url').textContent=url;document.getElementById('guest-link-message').textContent='このURLをゲスト管理者本人に送ってください。イベント一覧は表示されません。';document.getElementById('guest-link-modal').classList.remove('hidden')}
+  function closeGuestLink(){document.getElementById('guest-link-modal').classList.add('hidden')}document.getElementById('btn-close-guest-link').onclick=closeGuestLink;document.getElementById('btn-close-guest-link-bottom').onclick=closeGuestLink;document.getElementById('guest-link-modal').onclick=e=>{if(e.target.id==='guest-link-modal')closeGuestLink()};
+  document.getElementById('btn-copy-guest-link').onclick=async()=>{if(await copyText(currentGuestLink)){const b=document.getElementById('btn-copy-guest-link'),old=b.textContent;b.textContent='コピーしました';setTimeout(()=>b.textContent=old,1400)}else window.prompt('このURLをコピーしてください',currentGuestLink)};
 </script>
 </body>
 </html>
