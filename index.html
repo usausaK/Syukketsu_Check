@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>イベント日程調整</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     :root {
       --primary: #1976d2;
@@ -56,6 +57,22 @@
     }
     button:hover { background: #115293; }
     button:disabled { opacity: .55; cursor: default; }
+    .event-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 8px;
+    }
+    .event-header h1 { margin: 0; flex: 1; min-width: 0; }
+    .btn-qr {
+      flex: 0 0 auto;
+      background: #607d8b;
+      padding: 9px 13px;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+    .btn-qr:hover { background: #455a64; }
     .table-wrapper {
       overflow-x: auto;
       margin: 20px 0 30px;
@@ -126,11 +143,47 @@
       margin-top: 20px;
       word-break: break-word;
     }
+    .qr-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(0,0,0,.55);
+    }
+    .qr-modal-card {
+      position: relative;
+      width: min(92vw, 390px);
+      background: #fff;
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,.2);
+    }
+    .qr-modal-card h2 { margin: 0 32px 4px; }
+    .qr-modal-close {
+      position: absolute;
+      top: 8px;
+      right: 10px;
+      background: transparent;
+      color: #555;
+      padding: 2px 10px;
+      font-size: 28px;
+      line-height: 1;
+    }
+    .qr-modal-close:hover { background: #eee; color: #333; }
+    #event-qr-code { display: flex; justify-content: center; margin: 18px 0; }
+    #event-qr-url { font-size: .78rem; color: #666; word-break: break-all; }
+    .qr-help { color: #666; font-size: .9rem; margin: 8px 0 0; }
     @media (max-width: 640px) {
       body { padding: 10px; }
       .container { padding: 18px; }
       h1 { font-size: 1.55rem; }
       h2 { font-size: 1.25rem; }
+      .event-header { align-items: center; }
+      .btn-qr { padding: 8px 10px; font-size: 13px; }
       .attendance-row { flex-direction: column; align-items: flex-start; }
       .attendance-options { display: flex; gap: 10px; flex-wrap: wrap; }
       .attendance-options label { margin-right: 0; }
@@ -147,7 +200,10 @@
   </div>
 
   <div id="view-event" class="hidden">
-    <h1 id="display-event-name"></h1>
+    <div class="event-header">
+      <h1 id="display-event-name"></h1>
+      <button id="btn-show-qr" class="btn-qr" type="button">QRコード</button>
+    </div>
 
     <div id="edit-container" class="edit-box hidden">
       <label style="color:#e65100;">自分の回答を修正する</label>
@@ -181,6 +237,16 @@
     <button id="btn-submit-response">回答を送信</button>
     <button id="btn-cancel-edit" class="btn-cancel hidden">修正をキャンセル</button>
     <div id="error-container" class="error-msg hidden"></div>
+  </div>
+</div>
+
+<div id="event-qr-modal" class="qr-modal hidden" role="dialog" aria-modal="true" aria-labelledby="event-qr-title">
+  <div class="qr-modal-card">
+    <button id="btn-close-event-qr" class="qr-modal-close" type="button" aria-label="閉じる">&times;</button>
+    <h2 id="event-qr-title">イベント共有QR</h2>
+    <div id="event-qr-code"></div>
+    <p class="qr-help">このQRコードを読み取ると、このイベント画面を開けます。</p>
+    <div id="event-qr-url"></div>
   </div>
 </div>
 
@@ -223,6 +289,39 @@
     box.classList.remove('hidden');
     console.error(error);
   }
+
+  function eventShareUrl() {
+    return `${location.origin}${location.pathname}?id=${encodeURIComponent(currentEventId || '')}#%28%5Eo%5E%29%E2%98%86%E5%BD%A1`;
+  }
+
+  function showEventQr() {
+    if (!currentEventId) return;
+    const url = eventShareUrl();
+    const box = document.getElementById('event-qr-code');
+    box.innerHTML = '';
+    document.getElementById('event-qr-url').textContent = url;
+    if (window.QRCode) {
+      new window.QRCode(box, {
+        text: url,
+        width: 220,
+        height: 220,
+        correctLevel: window.QRCode.CorrectLevel.M
+      });
+    } else {
+      box.textContent = 'QRコードを生成できませんでした。';
+    }
+    document.getElementById('event-qr-modal').classList.remove('hidden');
+  }
+
+  function closeEventQr() {
+    document.getElementById('event-qr-modal').classList.add('hidden');
+  }
+
+  document.getElementById('btn-show-qr').onclick = showEventQr;
+  document.getElementById('btn-close-event-qr').onclick = closeEventQr;
+  document.getElementById('event-qr-modal').onclick = event => {
+    if (event.target.id === 'event-qr-modal') closeEventQr();
+  };
 
   function renderAttendanceForm() {
     const container = document.getElementById('attendance-form-list');
