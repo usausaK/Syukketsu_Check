@@ -8,12 +8,14 @@ service cloud.firestore {
         && request.auth.uid == "I8vDVys6KyclXQX2v5UaH5JyZR22";
     }
 
-    function isGuestManager(eventId) {
+    function hasGuestClaim(eventId) {
       return request.auth != null
-        && request.auth.token.email is string
-        && request.auth.token.email_verified == true
+        && exists(/databases/$(database)/documents/guestClaims/$(request.auth.uid))
+        && get(/databases/$(database)/documents/guestClaims/$(request.auth.uid)).data.eventId == eventId
+        && get(/databases/$(database)/documents/guestClaims/$(request.auth.uid)).data.accessToken is string
         && exists(/databases/$(database)/documents/guestGrants/$(eventId))
-        && get(/databases/$(database)/documents/guestGrants/$(eventId)).data.guestEmail == request.auth.token.email;
+        && get(/databases/$(database)/documents/guestGrants/$(eventId)).data.accessToken
+          == get(/databases/$(database)/documents/guestClaims/$(request.auth.uid)).data.accessToken;
     }
 
     match /events/{eventId} {
@@ -29,10 +31,10 @@ service cloud.firestore {
 
       // 主催者は全編集可。
       // ゲスト管理者はイベント名・候補日時だけ編集可。
-      // 参加者は responses の自分の1回答だけ変更可。
+      // 参加者は responses の1回答だけ変更可。
       allow update: if isAdmin()
         || (
-          isGuestManager(eventId)
+          hasGuestClaim(eventId)
           && request.resource.data
             .diff(resource.data)
             .affectedKeys()
@@ -49,34 +51,35 @@ service cloud.firestore {
             .size() == 1
         );
 
-      // 削除は主催者、またはそのイベントに割り当てられたゲスト管理者だけ。
-      allow delete: if isAdmin() || isGuestManager(eventId);
+      // 削除は主催者、または専用管理URLを認証済みのゲストだけ。
+      allow delete: if isAdmin() || hasGuestClaim(eventId);
     }
 
     match /guestGrants/{eventId} {
-      // 主催者は管理用に参照可能。ゲストは自分に割り当てられた1件だけ取得可能。
-      allow get: if isAdmin()
-        || (
-          request.auth != null
-          && request.auth.token.email is string
-          && request.auth.token.email_verified == true
-          && resource.data.guestEmail == request.auth.token.email
-        );
+      // 秘密のアクセストークンを含むため、主催者だけが読める。
+      allow get, list: if isAdmin();
 
-      // guestGrants の一覧取得は主催者だけ。
+      // 発行・再発行・削除も主催者だけ。
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /guestClaims/{uid} {
+      // 自分の匿名認証にだけ紐づく内部的な権限証明。
+      allow get: if isAdmin() || (request.auth != null && request.auth.uid == uid);
       allow list: if isAdmin();
 
-      // 割り当ての作成・変更は主催者だけ。
-      allow create, update: if isAdmin();
+      // URL中の eventId + accessToken が主催者発行の guestGrant と一致した場合だけ
+      // 匿名ユーザーが自分自身の claim を作成・更新できる。
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['eventId', 'accessToken', 'claimedAt'])
+        && request.resource.data.eventId is string
+        && request.resource.data.accessToken is string
+        && exists(/databases/$(database)/documents/guestGrants/$(request.resource.data.eventId))
+        && get(/databases/$(database)/documents/guestGrants/$(request.resource.data.eventId)).data.accessToken
+          == request.resource.data.accessToken;
 
-      // 主催者、または割り当てられたゲスト本人は削除可能。
-      allow delete: if isAdmin()
-        || (
-          request.auth != null
-          && request.auth.token.email is string
-          && request.auth.token.email_verified == true
-          && resource.data.guestEmail == request.auth.token.email
-        );
+      allow delete: if isAdmin() || (request.auth != null && request.auth.uid == uid);
     }
   }
 }
