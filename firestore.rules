@@ -1,0 +1,82 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.uid == "I8vDVys6KyclXQX2v5UaH5JyZR22";
+    }
+
+    function isGuestManager(eventId) {
+      return request.auth != null
+        && request.auth.token.email is string
+        && request.auth.token.email_verified == true
+        && exists(/databases/$(database)/documents/guestGrants/$(eventId))
+        && get(/databases/$(database)/documents/guestGrants/$(eventId)).data.guestEmail == request.auth.token.email;
+    }
+
+    match /events/{eventId} {
+      // 参加者は共有リンクで、その1件だけ閲覧可能。
+      allow get: if true;
+
+      // イベント一覧の取得は主催者だけ。ゲスト管理者は不可。
+      allow list: if isAdmin();
+
+      // イベント作成は主催者だけ。
+      allow create: if isAdmin()
+        && request.resource.data.ownerUid == request.auth.uid;
+
+      // 主催者は全編集可。
+      // ゲスト管理者はイベント名・候補日時だけ編集可。
+      // 参加者は responses の自分の1回答だけ変更可。
+      allow update: if isAdmin()
+        || (
+          isGuestManager(eventId)
+          && request.resource.data
+            .diff(resource.data)
+            .affectedKeys()
+            .hasOnly(['name', 'dates', 'updatedAt'])
+        )
+        || (
+          request.resource.data
+            .diff(resource.data)
+            .affectedKeys()
+            .hasOnly(['responses'])
+          && request.resource.data.responses
+            .diff(resource.data.responses)
+            .affectedKeys()
+            .size() == 1
+        );
+
+      // 削除は主催者、またはそのイベントに割り当てられたゲスト管理者だけ。
+      allow delete: if isAdmin() || isGuestManager(eventId);
+    }
+
+    match /guestGrants/{eventId} {
+      // 主催者は管理用に参照可能。ゲストは自分に割り当てられた1件だけ取得可能。
+      allow get: if isAdmin()
+        || (
+          request.auth != null
+          && request.auth.token.email is string
+          && request.auth.token.email_verified == true
+          && resource.data.guestEmail == request.auth.token.email
+        );
+
+      // guestGrants の一覧取得は主催者だけ。
+      allow list: if isAdmin();
+
+      // 割り当ての作成・変更は主催者だけ。
+      allow create, update: if isAdmin();
+
+      // 主催者、または割り当てられたゲスト本人は削除可能。
+      allow delete: if isAdmin()
+        || (
+          request.auth != null
+          && request.auth.token.email is string
+          && request.auth.token.email_verified == true
+          && resource.data.guestEmail == request.auth.token.email
+        );
+    }
+  }
+}

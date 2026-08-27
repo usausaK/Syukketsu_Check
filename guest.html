@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ゲスト管理者用イベント編集</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ja.js"></script>
+  <style>
+    :root{--primary:#7b1fa2;--primary-dark:#5e1580;--bg:#f5f7fa;--text:#333;--muted:#666;--border:#d0d7de;--danger:#c62828;--success:#2e7d32}
+    *{box-sizing:border-box}
+    body{font-family:"Helvetica Neue",Arial,"Hiragino Kaku Gothic ProN","Hiragino Sans",Meiryo,sans-serif;background:var(--bg);color:var(--text);margin:0;padding:20px;line-height:1.6}
+    .container{max-width:760px;margin:0 auto;background:#fff;border-radius:10px;padding:28px;box-shadow:0 4px 10px rgba(0,0,0,.08)}
+    h1,h2{color:var(--primary)}h1{margin-top:0}.hidden{display:none!important}
+    button{border:0;border-radius:6px;padding:10px 16px;background:var(--primary);color:#fff;font-size:15px;cursor:pointer}button:hover{background:var(--primary-dark)}button:disabled{opacity:.5;cursor:default}.btn-secondary{background:#607d8b}.btn-danger{background:var(--danger)}
+    .login-card,.message-card{text-align:center;padding:34px 14px}.login-card p,.message-card p{color:var(--muted)}
+    .auth-bar{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 12px;background:#f7f9fb;border:1px solid var(--border);border-radius:8px;margin-bottom:20px;flex-wrap:wrap}
+    .notice{background:#f3e5f5;border:1px solid #e1bee7;border-radius:8px;padding:12px 14px;margin-bottom:20px;color:#4a3551}
+    .form-group{margin-bottom:18px}label{display:block;font-weight:bold;margin-bottom:5px}input[type="text"]{width:100%;border:1px solid var(--border);border-radius:5px;padding:10px;font-size:16px}small{color:var(--muted)}
+    .date-list{margin-top:10px}.date-item{display:flex;align-items:center;gap:10px;border:1px solid #e5e7eb;background:#fafafa;padding:10px 12px;border-radius:6px;margin-bottom:8px}.date-item span{flex:1;font-weight:bold}.date-item input{width:120px}.btn-remove{background:transparent;color:var(--danger);font-size:22px;padding:0 6px}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}.actions button{flex:1 1 180px}.danger-zone{margin-top:34px;padding-top:22px;border-top:1px solid var(--border)}
+    .error{background:#ffebee;color:#c62828;padding:12px 14px;border-radius:6px;margin-top:12px}.success{background:#e8f5e9;color:var(--success);padding:12px 14px;border-radius:6px;margin-top:12px}.share-box{word-break:break-all;font-size:.82rem;color:#666;background:#f7f7f7;padding:10px;border-radius:6px;margin-top:10px}
+    @media(max-width:640px){body{padding:10px}.container{padding:18px}h1{font-size:1.5rem}h2{font-size:1.22rem}.date-item{flex-wrap:wrap}.date-item input{width:105px}}
+  </style>
+</head>
+<body>
+<div class="container">
+  <section id="view-login" class="login-card">
+    <h1>ゲスト管理者用イベント編集</h1>
+    <p>主催者から指定されたGoogleアカウントでログインしてください。</p>
+    <button id="btn-login">Googleでログイン</button>
+    <div id="login-error" class="error hidden"></div>
+  </section>
+
+  <section id="view-denied" class="message-card hidden">
+    <h1>このイベントを管理できません</h1>
+    <p id="denied-message">このGoogleアカウントには、このイベントの管理権限がありません。</p>
+    <button id="btn-switch-account">別のGoogleアカウントでログイン</button>
+  </section>
+
+  <section id="view-editor" class="hidden">
+    <h1>ゲスト管理者用イベント編集</h1>
+    <div class="auth-bar"><div>ログイン中：<span id="user-email"></span></div><button id="btn-logout" class="btn-secondary">ログアウト</button></div>
+    <div class="notice">この画面では、主催者から与えられたこの1件のイベントだけを管理できます。イベント一覧は表示されません。</div>
+
+    <div class="form-group"><label for="event-name">イベント名</label><input id="event-name" type="text" placeholder="例：部署の飲み会"></div>
+    <div class="form-group"><label for="default-time">追加する候補日の基本時間</label><input id="default-time" type="text" placeholder="例：19:00 & 21:00"><small>「19:00 & 21:00」のように入力すると同じ日に複数時間を追加できます。</small></div>
+    <div class="form-group"><label for="calendar">カレンダーから候補日を追加</label><input id="calendar" type="text" placeholder="ここをタップして日付を追加"></div>
+    <div class="form-group"><label>候補日時</label><div id="selected-dates" class="date-list"></div></div>
+
+    <div class="actions">
+      <button id="btn-save">イベントを保存</button>
+      <button id="btn-copy-participant" class="btn-secondary">参加者用URLをコピー</button>
+    </div>
+    <div id="participant-url" class="share-box"></div>
+    <div id="save-success" class="success hidden"></div>
+    <div id="editor-error" class="error hidden"></div>
+
+    <div class="danger-zone">
+      <h2>イベントを削除</h2>
+      <p style="color:#666">回答も含めて削除され、元に戻せません。</p>
+      <button id="btn-delete" class="btn-danger">このイベントを削除</button>
+    </div>
+  </section>
+
+  <section id="view-deleted" class="message-card hidden">
+    <h1>イベントを削除しました</h1>
+    <p>このゲスト管理URLはもう利用できません。</p>
+  </section>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getFirestore, doc, getDoc, updateDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+  const firebaseConfig={apiKey:"AIzaSyAZNUBnvO0t4ExD99dHUQYkJUx1rIKO3hk",authDomain:"scheduleadjustment-41555.firebaseapp.com",projectId:"scheduleadjustment-41555",storageBucket:"scheduleadjustment-41555.firebasestorage.app",messagingSenderId:"989847585888",appId:"1:989847585888:web:6c1d3cc5923facc4dcef05"};
+  const app=initializeApp(firebaseConfig),db=getFirestore(app),auth=getAuth(app),provider=new GoogleAuthProvider();
+  provider.setCustomParameters({prompt:'select_account'});
+
+  const params=new URLSearchParams(location.search),eventId=params.get('id');
+  let currentUser=null,currentEvent=null,selectedCandidateDates=[],checking=false;
+
+  const esc=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+  const getIndexUrl=()=>`${location.origin}${location.pathname.replace(/guest\.html$/i,'index.html')}`;
+  const shareUrl=()=>`${getIndexUrl()}?id=${encodeURIComponent(eventId||'')}#%28%5Eo%5E%29%E2%98%86%E5%BD%A1`;
+  function showOnly(name){['login','denied','editor','deleted'].forEach(x=>document.getElementById(`view-${x}`).classList.toggle('hidden',x!==name))}
+  function showEditorError(message){const b=document.getElementById('editor-error');b.textContent=message;b.classList.remove('hidden')}
+  function clearMessages(){document.getElementById('editor-error').classList.add('hidden');document.getElementById('save-success').classList.add('hidden')}
+  async function copyText(text){try{await navigator.clipboard.writeText(text);return true}catch{return false}}
+
+  async function login(){const box=document.getElementById('login-error');box.classList.add('hidden');try{await setPersistence(auth,browserLocalPersistence);await signInWithPopup(auth,provider)}catch(e){console.error(e);box.textContent=`Googleログインに失敗しました。${e.code||''}`;box.classList.remove('hidden')}}
+  document.getElementById('btn-login').onclick=login;
+  document.getElementById('btn-logout').onclick=()=>signOut(auth);
+  document.getElementById('btn-switch-account').onclick=async()=>{await signOut(auth);login()};
+
+  const calendar=flatpickr('#calendar',{locale:'ja',mode:'multiple',dateFormat:'Y-m-d',closeOnSelect:false,onChange(ds,str,inst){if(!ds.length)return;const times=document.getElementById('default-time').value.trim().split(/[,&、]+/).map(v=>v.trim()).filter(Boolean);if(!times.length)times.push('');ds.forEach(d=>{const date=inst.formatDate(d,'Y-m-d (D)'),raw=inst.formatDate(d,'Y-m-d');times.forEach(time=>{if(!selectedCandidateDates.some(x=>x.date===date&&x.time===time))selectedCandidateDates.push({date,time,raw})})});sortDates();const m=inst.currentMonth,y=inst.currentYear;inst.clear();inst.jumpToDate(new Date(y,m,1));renderDates()}});
+
+  function sortDates(){selectedCandidateDates.sort((a,b)=>a.raw===b.raw?a.time.localeCompare(b.time):new Date(a.raw)-new Date(b.raw))}
+  function renderDates(){
+    const c=document.getElementById('selected-dates');c.innerHTML='';
+    if(!selectedCandidateDates.length){c.innerHTML='<p style="color:#999;font-size:.9em;margin:0">候補日はまだ設定されていません。</p>';return}
+    selectedCandidateDates.forEach((x,i)=>{const r=document.createElement('div');r.className='date-item';r.innerHTML=`<span>${esc(x.date)}</span><input class="time" data-i="${i}" type="text" value="${esc(x.time)}" placeholder="時間"><button class="btn-remove" data-i="${i}" type="button">&times;</button>`;c.appendChild(r)});
+    c.querySelectorAll('.time').forEach(x=>x.onchange=()=>{selectedCandidateDates[Number(x.dataset.i)].time=x.value.trim();sortDates();renderDates()});
+    c.querySelectorAll('.btn-remove').forEach(x=>x.onclick=()=>{selectedCandidateDates.splice(Number(x.dataset.i),1);renderDates()});
+  }
+  renderDates();
+
+  async function loadAuthorizedEvent(user){
+    if(!eventId){document.getElementById('denied-message').textContent='ゲスト管理URLが正しくありません。主催者から受け取ったURLを開いてください。';showOnly('denied');return}
+    if(checking)return;checking=true;
+    try{
+      const grantSnap=await getDoc(doc(db,'guestGrants',eventId));
+      if(!grantSnap.exists())throw new Error('grant-not-found');
+      const grant=grantSnap.data();
+      if((grant.guestEmail||'').toLowerCase()!==(user.email||'').toLowerCase())throw new Error('email-mismatch');
+      const eventSnap=await getDoc(doc(db,'events',eventId));
+      if(!eventSnap.exists())throw new Error('event-not-found');
+      currentEvent={id:eventSnap.id,...eventSnap.data()};
+      document.getElementById('user-email').textContent=user.email||user.uid;
+      document.getElementById('event-name').value=currentEvent.name||'';
+      selectedCandidateDates=(Array.isArray(currentEvent.dates)?currentEvent.dates:[]).map(x=>({date:x.date||'',time:x.time||'',raw:String(x.date||'').slice(0,10)}));
+      sortDates();renderDates();
+      document.getElementById('participant-url').textContent=shareUrl();
+      showOnly('editor');
+    }catch(e){console.error(e);document.getElementById('denied-message').textContent=`${user.email||'このアカウント'} には、このイベントの管理権限がありません。主催者が指定したGoogleアカウントでログインしてください。`;showOnly('denied')}
+    finally{checking=false}
+  }
+
+  onAuthStateChanged(auth,user=>{currentUser=user||null;if(user)loadAuthorizedEvent(user);else showOnly('login')});
+
+  document.getElementById('btn-save').onclick=async()=>{
+    clearMessages();
+    if(!currentUser||!currentEvent)return;
+    const name=document.getElementById('event-name').value.trim();
+    if(!name){showEditorError('イベント名を入力してください。');return}
+    const btn=document.getElementById('btn-save');btn.disabled=true;
+    try{
+      const dates=selectedCandidateDates.map(x=>({date:x.date,time:x.time}));
+      await updateDoc(doc(db,'events',eventId),{name,dates,updatedAt:Date.now()});
+      currentEvent.name=name;currentEvent.dates=dates;
+      const s=document.getElementById('save-success');s.textContent='イベント名と候補日時を保存しました。';s.classList.remove('hidden');
+    }catch(e){console.error(e);showEditorError('保存できませんでした。管理権限またはFirestoreルールをご確認ください。')}
+    finally{btn.disabled=false}
+  };
+
+  document.getElementById('btn-copy-participant').onclick=async()=>{const url=shareUrl();if(await copyText(url)){const b=document.getElementById('btn-copy-participant'),old=b.textContent;b.textContent='コピーしました';setTimeout(()=>b.textContent=old,1400)}else window.prompt('このURLをコピーしてください',url)};
+
+  document.getElementById('btn-delete').onclick=async()=>{
+    if(!currentUser||!currentEvent)return;
+    if(!confirm(`「${currentEvent.name||'このイベント'}」を削除しますか？\n\n回答も含めて削除され、元に戻せません。`))return;
+    const btn=document.getElementById('btn-delete');btn.disabled=true;
+    try{
+      const batch=writeBatch(db);batch.delete(doc(db,'events',eventId));batch.delete(doc(db,'guestGrants',eventId));await batch.commit();showOnly('deleted');
+    }catch(e){console.error(e);showEditorError('イベントを削除できませんでした。Firestoreルールをご確認ください。');btn.disabled=false}
+  };
+</script>
+</body>
+</html>
